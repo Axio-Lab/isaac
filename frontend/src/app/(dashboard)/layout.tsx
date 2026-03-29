@@ -82,7 +82,7 @@ export default function DashboardLayout({
         }`}
       >
         <div className="flex items-center justify-between h-13 px-4 border-b border-border shrink-0">
-          <Link href="/chat" className="flex items-center gap-2">
+          <Link href="/tasks" className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <Bot className="h-3.5 w-3.5 text-primary-foreground" />
             </div>

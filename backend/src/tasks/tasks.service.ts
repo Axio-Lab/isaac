@@ -4,6 +4,12 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
+import { ChannelMessagingService } from "@/channels/channel-messaging.service";
+import {
+  msgTaskArchivedNotice,
+  msgTaskActivatedNotice,
+} from "@/channels/bot-messages";
+import { assertTaskNameUniqueForUser } from "./task-name-uniqueness";
 
 export interface HumanTaskCreateInput {
   name: string;
@@ -31,7 +37,10 @@ export type HumanTaskUpdateInput = Partial<HumanTaskCreateInput> & {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly messaging: ChannelMessagingService,
+  ) {}
 
   async listTasks(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
@@ -99,14 +108,7 @@ export class TasksService {
     }
 
     const taskName = String(data.name).trim();
-    const nameTaken = await (this.prisma as any).humanTask.findFirst({
-      where: { userId, name: taskName, status: { not: "ARCHIVED" } },
-    });
-    if (nameTaken) {
-      throw new BadRequestException(
-        "A task with this name already exists. Choose a unique name.",
-      );
-    }
+    await assertTaskNameUniqueForUser(this.prisma, userId, taskName);
 
     const channelId =
       data.reportChannelId?.trim() || null;
@@ -169,19 +171,9 @@ export class TasksService {
     if (prismaData.name !== undefined && typeof prismaData.name === "string") {
       const nextName = String(prismaData.name).trim();
       prismaData.name = nextName;
-      const taken = await (this.prisma as any).humanTask.findFirst({
-        where: {
-          userId,
-          name: nextName,
-          NOT: { id: taskId },
-          status: { not: "ARCHIVED" },
-        },
+      await assertTaskNameUniqueForUser(this.prisma, userId, nextName, {
+        excludeHumanTaskId: taskId,
       });
-      if (taken) {
-        throw new BadRequestException(
-          "A task with this name already exists. Choose a unique name.",
-        );
-      }
     }
 
     const result = await (this.prisma as any).humanTask.updateMany({
@@ -193,31 +185,89 @@ export class TasksService {
     return result;
   }
 
-  async deleteTask(userId: string, taskId: string) {
-    const result = await (this.prisma as any).humanTask.updateMany({
+  /** Archive: no reminders/submissions; workers are notified on the task channel. */
+  async archiveTask(userId: string, taskId: string) {
+    const task = await (this.prisma as any).humanTask.findFirst({
       where: { id: taskId, userId },
+    });
+    if (!task) throw new NotFoundException("Task not found");
+    if (task.status === "ARCHIVED") {
+      throw new BadRequestException("Task is already archived");
+    }
+    await (this.prisma as any).humanTask.update({
+      where: { id: taskId },
       data: { status: "ARCHIVED" },
     });
-    if (result.count === 0) throw new NotFoundException("Task not found");
-    return result;
+    await this.messaging.broadcastToTask(
+      taskId,
+      msgTaskArchivedNotice(task.name),
+    );
+    return { success: true };
+  }
+
+  /** Reactivate an archived task (back to ACTIVE); workers are notified. */
+  async activateTask(userId: string, taskId: string) {
+    const task = await (this.prisma as any).humanTask.findFirst({
+      where: { id: taskId, userId },
+    });
+    if (!task) throw new NotFoundException("Task not found");
+    if (task.status !== "ARCHIVED") {
+      throw new BadRequestException(
+        "Only archived tasks can be reactivated this way",
+      );
+    }
+    await (this.prisma as any).humanTask.update({
+      where: { id: taskId },
+      data: { status: "ACTIVE" },
+    });
+    await this.messaging.broadcastToTask(
+      taskId,
+      msgTaskActivatedNotice(task.name),
+    );
+    return { success: true };
+  }
+
+  /** Permanently remove task and related workers, submissions, reports (DB cascades). */
+  async deleteTask(userId: string, taskId: string) {
+    const existing = await (this.prisma as any).humanTask.findFirst({
+      where: { id: taskId, userId },
+    });
+    if (!existing) throw new NotFoundException("Task not found");
+    await (this.prisma as any).humanTask.delete({ where: { id: taskId } });
+    return { success: true };
   }
 
   async pauseTask(userId: string, taskId: string) {
-    const result = await (this.prisma as any).humanTask.updateMany({
+    const task = await (this.prisma as any).humanTask.findFirst({
       where: { id: taskId, userId },
+    });
+    if (!task) throw new NotFoundException("Task not found");
+    if (task.status === "ARCHIVED") {
+      throw new BadRequestException("Cannot pause an archived task");
+    }
+    if (task.status !== "ACTIVE") {
+      throw new BadRequestException("Only active tasks can be paused");
+    }
+    await (this.prisma as any).humanTask.update({
+      where: { id: taskId },
       data: { status: "PAUSED" },
     });
-    if (result.count === 0) throw new NotFoundException("Task not found");
-    return result;
+    return { success: true };
   }
 
   async resumeTask(userId: string, taskId: string) {
-    const result = await (this.prisma as any).humanTask.updateMany({
+    const task = await (this.prisma as any).humanTask.findFirst({
       where: { id: taskId, userId },
+    });
+    if (!task) throw new NotFoundException("Task not found");
+    if (task.status !== "PAUSED") {
+      throw new BadRequestException("Only paused tasks can be resumed");
+    }
+    await (this.prisma as any).humanTask.update({
+      where: { id: taskId },
       data: { status: "ACTIVE" },
     });
-    if (result.count === 0) throw new NotFoundException("Task not found");
-    return result;
+    return { success: true };
   }
 
   private validatePayload(

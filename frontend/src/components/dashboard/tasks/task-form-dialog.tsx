@@ -14,12 +14,19 @@ import {
   AlertCircle,
   ExternalLink,
   Save,
+  Users,
+  Check,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import type { HumanTask } from "@/hooks/useHumanTasks";
 import { useAiFillTask } from "@/hooks/useHumanTasks";
+import type { AutomatedTask } from "@/hooks/useAutomatedTasks";
 import type { TaskChannel } from "@/hooks/useTaskChannels";
-import type { ComposioConnectedAccount } from "@/hooks/useComposioConnections";
+import type {
+  ComposioApp,
+  ComposioConnectedAccount,
+} from "@/hooks/useComposioConnections";
 import { useInitiateComposioConnection } from "@/hooks/useComposioConnections";
 import type { TaskFormData, DeliveryDestination } from "./constants";
 import {
@@ -39,6 +46,7 @@ interface TaskFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingTask: HumanTask | null;
+  editingAutoTask?: AutomatedTask | null;
   form: TaskFormData;
   setForm: React.Dispatch<React.SetStateAction<TaskFormData>>;
   onSubmit: (e: React.FormEvent) => void;
@@ -48,6 +56,8 @@ interface TaskFormDialogProps {
   updatePending: boolean;
   channels: TaskChannel[];
   connectedAccounts: ComposioConnectedAccount[];
+  /** From `useComposioApps()` — used to show app logos like on Connected Apps */
+  composioAppCatalog?: ComposioApp[];
 }
 
 const inputClass =
@@ -128,6 +138,156 @@ function TimezoneSelect({
                   </span>
                 </button>
               ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConnectedAppsMultiSelect({
+  accounts,
+  composioAppCatalog,
+  selected,
+  onChange,
+}: {
+  accounts: ComposioConnectedAccount[];
+  composioAppCatalog: ComposioApp[];
+  selected: string[];
+  onChange: (apps: string[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const rows = useMemo(() => {
+    return accounts.map((a) => {
+      const slug = a.appName?.toLowerCase() ?? "";
+      const meta = composioAppCatalog.find(
+        (c) => c.slug.toLowerCase() === slug,
+      );
+      const label = meta?.name ?? a.appName?.trim() ?? "Unknown";
+      return {
+        id: a.id,
+        key: a.appName?.toUpperCase().trim() || "UNKNOWN",
+        label,
+        logo: meta?.logo,
+      };
+    });
+  }, [accounts, composioAppCatalog]);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return rows;
+    const q = query.toLowerCase();
+    return rows.filter(
+      (r) =>
+        r.label.toLowerCase().includes(q) || r.key.toLowerCase().includes(q),
+    );
+  }, [rows, query]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen]);
+
+  function toggle(key: string) {
+    const next = new Set(selected);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange([...next]);
+  }
+
+  const summary = useMemo(() => {
+    if (selected.length === 0) return "Select apps (optional)";
+    const labels = selected.map((key) => {
+      const row = rows.find((x) => x.key === key);
+      return row?.label ?? key;
+    });
+    if (labels.length <= 2) return labels.join(", ");
+    return `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more`;
+  }, [selected, rows]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((o) => !o)}
+        className={`${inputClass} text-left flex items-center justify-between gap-2`}
+      >
+        <span className="truncate min-w-0">{summary}</span>
+        <ChevronDown
+          className={`h-3 w-3 shrink-0 text-muted-foreground transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {isOpen && (
+        <div className="absolute z-100 mt-1 w-full bg-popover border border-border rounded-lg shadow-xl max-h-52 overflow-hidden flex flex-col">
+          <div className="p-1.5 border-b border-border shrink-0">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search connected apps..."
+                className="w-full pl-7 pr-2 py-1.5 text-xs bg-background border border-input rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-40 min-h-0">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-2 text-[10px] text-muted-foreground">
+                No match
+              </p>
+            ) : (
+              filtered.map((r) => {
+                const isOn = selected.includes(r.key);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => toggle(r.key)}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] hover:bg-muted transition-colors ${
+                      isOn ? "bg-primary/10 text-primary" : "text-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
+                        isOn
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background"
+                      }`}
+                    >
+                      {isOn && <Check className="h-2 w-2" strokeWidth={3} />}
+                    </span>
+                    {r.logo ? (
+                      <img
+                        src={r.logo}
+                        alt=""
+                        className="h-4 w-4 rounded-lg object-contain shrink-0 bg-muted/40"
+                      />
+                    ) : (
+                      <div className="h-4 w-4 rounded-lg bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground shrink-0">
+                        {r.label.charAt(0)}
+                      </div>
+                    )}
+                    <span className="truncate">{r.label}</span>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
@@ -252,6 +412,7 @@ export function TaskFormDialog({
   open,
   onOpenChange,
   editingTask,
+  editingAutoTask,
   form,
   setForm,
   onSubmit,
@@ -261,10 +422,16 @@ export function TaskFormDialog({
   updatePending,
   channels,
   connectedAccounts,
+  composioAppCatalog = [],
 }: TaskFormDialogProps) {
+  const isAutomated = form.taskType === "AUTOMATED";
+  const isEditing = !!(editingTask || editingAutoTask);
   const aiFill = useAiFillTask();
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiExpanded, setAiExpanded] = useState(false);
+  const [aiConnectSuggestions, setAiConnectSuggestions] = useState<
+    { app: string; reason: string }[]
+  >([]);
   const formDirtyRef = useRef(false);
   const submittedRef = useRef(false);
 
@@ -274,6 +441,7 @@ export function TaskFormDialog({
 
   const dest = form.deliveryDestination;
   const destNeedsComposio =
+    !isAutomated &&
     isComposioType(dest.type) &&
     !isTypeConnected(dest.type, connectedAccounts);
 
@@ -284,8 +452,13 @@ export function TaskFormDialog({
   useEffect(() => {
     if (open) {
       submittedRef.current = false;
+      setAiConnectSuggestions([]);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!isAutomated) setAiConnectSuggestions([]);
+  }, [isAutomated]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -293,7 +466,7 @@ export function TaskFormDialog({
         !nextOpen &&
         !submittedRef.current &&
         formDirtyRef.current &&
-        !editingTask
+        !isEditing
       ) {
         try {
           localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
@@ -302,7 +475,7 @@ export function TaskFormDialog({
       }
       onOpenChange(nextOpen);
     },
-    [form, editingTask, onOpenChange],
+    [form, isEditing, onOpenChange],
   );
 
   function handleFormSubmit(e: React.FormEvent) {
@@ -323,43 +496,101 @@ export function TaskFormDialog({
 
   async function handleAiFill() {
     if (!aiPrompt.trim()) return;
-    const result = await aiFill.mutateAsync({ prompt: aiPrompt.trim() });
+    const result = await aiFill.mutateAsync({
+      prompt: aiPrompt.trim(),
+      taskType: isAutomated ? "AUTOMATED" : "HUMAN",
+      connectedAppNames: isAutomated
+        ? connectedAccounts
+            .map((a) => a.appName?.toUpperCase())
+            .filter(Boolean)
+        : undefined,
+    });
     if (result.fields && Object.keys(result.fields).length > 0) {
+      const fields = result.fields as Record<string, unknown>;
+      if (isAutomated && Array.isArray(fields.connectSuggestions)) {
+        const parsed = (fields.connectSuggestions as unknown[])
+          .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
+          .map((x) => ({
+            app:
+              typeof x.app === "string"
+                ? x.app.toUpperCase().trim()
+                : "",
+            reason:
+              typeof x.reason === "string" ? x.reason.trim() : "",
+          }))
+          .filter((x) => x.app.length > 0);
+        setAiConnectSuggestions(parsed);
+        if (parsed.length > 0) {
+          toast.message("Isaac suggested apps to connect", {
+            description: "See the note under Connected Apps — you can add them in Connected Apps, then re-run prefill if you like.",
+          });
+        }
+      } else {
+        setAiConnectSuggestions([]);
+      }
+
       setForm((f) => {
         const merged = { ...f };
-        const fields = result.fields as Record<string, unknown>;
-        if (typeof fields.name === "string") merged.name = fields.name;
-        if (typeof fields.description === "string")
-          merged.description = fields.description;
-        if (typeof fields.evidenceType === "string")
-          merged.evidenceType = fields.evidenceType;
-        if (typeof fields.recurrenceType === "string")
-          merged.recurrenceType = fields.recurrenceType;
-        if (typeof fields.recurrenceInterval === "number")
-          merged.recurrenceInterval = fields.recurrenceInterval;
-        if (Array.isArray(fields.scheduledTimes))
-          merged.scheduledTimes = (fields.scheduledTimes as string[]).join(
-            ", ",
-          );
-        if (typeof fields.timezone === "string")
-          merged.timezone = fields.timezone;
-        if (Array.isArray(fields.acceptanceRules))
-          merged.acceptanceRules =
-            (fields.acceptanceRules as string[]).length > 0
-              ? (fields.acceptanceRules as string[])
-              : [""];
-        if (typeof fields.scoringEnabled === "boolean")
-          merged.scoringEnabled = fields.scoringEnabled;
-        if (typeof fields.passingScore === "number")
-          merged.passingScore = fields.passingScore;
-        if (typeof fields.graceMinutes === "number")
-          merged.graceMinutes = fields.graceMinutes;
-        if (typeof fields.resubmissionAllowed === "boolean")
-          merged.resubmissionAllowed = fields.resubmissionAllowed;
-        if (typeof fields.reportTime === "string")
-          merged.reportTime = fields.reportTime;
-        if (typeof fields.reportDocType === "string")
-          merged.reportDocType = fields.reportDocType;
+        if (isAutomated) {
+          if (typeof fields.name === "string") merged.name = fields.name;
+          if (typeof fields.description === "string")
+            merged.description = fields.description;
+          if (typeof fields.prompt === "string") merged.prompt = fields.prompt;
+          if (Array.isArray(fields.composioApps)) {
+            const allowed = new Set(
+              connectedAccounts
+                .map((a) => a.appName?.toUpperCase())
+                .filter(Boolean) as string[],
+            );
+            const picked = (fields.composioApps as string[])
+              .map((a) => String(a).toUpperCase())
+              .filter((a) => allowed.has(a));
+            merged.composioApps = picked;
+          }
+          if (typeof fields.recurrenceType === "string")
+            merged.recurrenceType = fields.recurrenceType;
+          if (typeof fields.recurrenceInterval === "number")
+            merged.recurrenceInterval = fields.recurrenceInterval;
+          if (Array.isArray(fields.scheduledTimes))
+            merged.scheduledTimes = (fields.scheduledTimes as string[]).join(
+              ", ",
+            );
+          if (typeof fields.timezone === "string")
+            merged.timezone = fields.timezone;
+        } else {
+          if (typeof fields.name === "string") merged.name = fields.name;
+          if (typeof fields.description === "string")
+            merged.description = fields.description;
+          if (typeof fields.evidenceType === "string")
+            merged.evidenceType = fields.evidenceType;
+          if (typeof fields.recurrenceType === "string")
+            merged.recurrenceType = fields.recurrenceType;
+          if (typeof fields.recurrenceInterval === "number")
+            merged.recurrenceInterval = fields.recurrenceInterval;
+          if (Array.isArray(fields.scheduledTimes))
+            merged.scheduledTimes = (fields.scheduledTimes as string[]).join(
+              ", ",
+            );
+          if (typeof fields.timezone === "string")
+            merged.timezone = fields.timezone;
+          if (Array.isArray(fields.acceptanceRules))
+            merged.acceptanceRules =
+              (fields.acceptanceRules as string[]).length > 0
+                ? (fields.acceptanceRules as string[])
+                : [""];
+          if (typeof fields.scoringEnabled === "boolean")
+            merged.scoringEnabled = fields.scoringEnabled;
+          if (typeof fields.passingScore === "number")
+            merged.passingScore = fields.passingScore;
+          if (typeof fields.graceMinutes === "number")
+            merged.graceMinutes = fields.graceMinutes;
+          if (typeof fields.resubmissionAllowed === "boolean")
+            merged.resubmissionAllowed = fields.resubmissionAllowed;
+          if (typeof fields.reportTime === "string")
+            merged.reportTime = fields.reportTime;
+          if (typeof fields.reportDocType === "string")
+            merged.reportDocType = fields.reportDocType;
+        }
         return merged;
       });
       setAiExpanded(false);
@@ -407,10 +638,8 @@ export function TaskFormDialog({
         >
           <div className="flex items-center justify-between mb-5">
             <Dialog.Title className="text-sm font-semibold text-foreground">
-              {editingTask
-                ? editingTask.status === "DRAFT"
-                  ? "Complete Draft"
-                  : "Edit Task"
+              {isEditing
+                ? (editingTask?.status === "DRAFT" ? "Complete Draft" : "Edit Task")
                 : "Create Task"}
             </Dialog.Title>
             <Dialog.Close asChild>
@@ -420,8 +649,38 @@ export function TaskFormDialog({
             </Dialog.Close>
           </div>
 
+          {/* ── Task type toggle ── */}
+          {!isEditing && (
+            <div className="flex gap-1 p-0.5 bg-muted rounded-lg mb-4">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, taskType: "HUMAN" }))}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+                  !isAutomated
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Users className="h-3 w-3" />
+                Human Task
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, taskType: "AUTOMATED" }))}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+                  isAutomated
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sparkles className="h-3 w-3" />
+                Automated Task
+              </button>
+            </div>
+          )}
+
           {/* ── Isaac prefill ── */}
-          {!editingTask && (
+          {!isEditing && (
             <div className="mb-4 border border-border rounded-lg overflow-hidden">
               <button
                 type="button"
@@ -441,15 +700,20 @@ export function TaskFormDialog({
               {aiExpanded && (
                 <div className="px-3 pb-3 space-y-2">
                   <p className="text-[10px] text-muted-foreground leading-snug">
-                    Describe what you want to Isaac — he will prefill the fields
-                    below. You can still edit everything before saving.
+                    {isAutomated
+                      ? "Describe the automation — Isaac will propose name, prompt, and schedule. He will preselect apps you already use; if something else is needed, he lists apps to connect below. Tasks that need no integrations are fine — app chips can stay empty."
+                      : "Describe what you want to Isaac — he will prefill the fields below. You can still edit everything before saving."}
                   </p>
                   <textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     className={`${inputClass} resize-none`}
                     rows={2}
-                    placeholder="e.g. Daily warehouse photo check-ins at 9am and 5pm, with rules about visible timestamps..."
+                    placeholder={
+                      isAutomated
+                        ? "e.g. Every morning, summarize unread Gmail from my team; or: weekly digest of Slack mentions — no apps needed for pure reminders…"
+                        : "e.g. Daily warehouse photo check-ins at 9am and 5pm, with rules about visible timestamps..."
+                    }
                   />
                   <button
                     type="button"
@@ -496,7 +760,78 @@ export function TaskFormDialog({
               />
             </div>
 
-            {/* ── Section 2: Channel ── */}
+            {/* ── Automated: Prompt + Apps ── */}
+            {isAutomated && (
+              <>
+                <div>
+                  <label className={labelClass}>Prompt *</label>
+                  <textarea
+                    value={form.prompt}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, prompt: e.target.value }))
+                    }
+                    className={`${inputClass} resize-none`}
+                    rows={4}
+                    placeholder="e.g. Check my Gmail inbox and summarize all emails from yesterday"
+                    required
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Tell Isaac what to do. Use integrations only when the task needs them; many automations need no connected apps.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Connected Apps (optional)</label>
+                  <div className="mt-1">
+                    {connectedAccounts.length === 0 ? (
+                      <p className="text-[10px] text-muted-foreground">
+                        None connected yet. Use prefill above — Isaac can suggest which to add in Connected Apps, or leave empty if the task doesn&apos;t need tools.
+                      </p>
+                    ) : (
+                      <ConnectedAppsMultiSelect
+                        accounts={connectedAccounts}
+                        composioAppCatalog={composioAppCatalog}
+                        selected={form.composioApps}
+                        onChange={(apps) =>
+                          setForm((f) => ({ ...f, composioApps: apps }))
+                        }
+                      />
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Select only apps this run should call. Leave none selected if the prompt doesn&apos;t need external APIs.
+                  </p>
+                  {aiConnectSuggestions.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
+                      <p className="text-[10px] font-medium text-foreground mb-1.5">
+                        Isaac suggests connecting these
+                      </p>
+                      <ul className="space-y-1 mb-2">
+                        {aiConnectSuggestions.map(({ app, reason }) => (
+                          <li
+                            key={app}
+                            className="text-[10px] text-muted-foreground leading-snug"
+                          >
+                            <span className="font-medium text-foreground">{app}</span>
+                            {reason ? ` — ${reason}` : null}
+                          </li>
+                        ))}
+                      </ul>
+                      <Link
+                        href="/connected-apps"
+                        className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+                      >
+                        Open Connected Apps
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ── Section 2: Channel (human only) ── */}
+            {!isAutomated && (
             <div>
               <label className={labelClass}>Notification Channel *</label>
               <select
@@ -520,8 +855,10 @@ export function TaskFormDialog({
                 </p>
               )}
             </div>
+            )}
 
-            {/* ── Section 3: Evidence & Schedule ── */}
+            {/* ── Section 3: Evidence & Schedule (human) / Schedule (automated) ── */}
+            {!isAutomated ? (
             <div className={sectionClass}>
               <p className={sectionTitle}>Evidence & Schedule</p>
               <div className="grid grid-cols-2 gap-3">
@@ -613,9 +950,40 @@ export function TaskFormDialog({
                 />
               </div>
             </div>
-
-            {/* ── Section 4: Acceptance Rules ── */}
+            ) : (
             <div className={sectionClass}>
+              <p className={sectionTitle}>Schedule</p>
+              <div>
+                <label className={labelClass}>
+                  Scheduled Times (comma-separated HH:MM)
+                </label>
+                <input
+                  type="text"
+                  value={form.scheduledTimes}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, scheduledTimes: e.target.value }))
+                  }
+                  className={inputClass}
+                  placeholder="07:00, 18:00"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Isaac will run this task at these times. Leave empty for on-demand only.
+                </p>
+              </div>
+              <div className="mt-3">
+                <label className={labelClass}>Timezone</label>
+                <TimezoneSelect
+                  value={form.timezone}
+                  onChange={(tz) =>
+                    setForm((f) => ({ ...f, timezone: tz }))
+                  }
+                />
+              </div>
+            </div>
+            )}
+
+            {/* ── Section 4: Acceptance Rules (human only) ── */}
+            {!isAutomated && <div className={sectionClass}>
               <div className="flex items-center justify-between mb-2.5">
                 <p className={sectionTitle}>Acceptance Rules *</p>
                 <button
@@ -650,10 +1018,10 @@ export function TaskFormDialog({
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
 
-            {/* ── Section 5: Scoring ── */}
-            <div className={sectionClass}>
+            {/* ── Section 5: Scoring (human only) ── */}
+            {!isAutomated && <div className={sectionClass}>
               <p className={sectionTitle}>Scoring</p>
 
               <div className="flex items-center justify-between py-1">
@@ -725,12 +1093,14 @@ export function TaskFormDialog({
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* ── Section 6: Report & Delivery ── */}
             <div className={sectionClass}>
-              <p className={sectionTitle}>Report & Delivery</p>
+              <p className={sectionTitle}>{isAutomated ? "Delivery" : "Report & Delivery"}</p>
 
+              {!isAutomated && (
+              <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>Report Time (HH:MM)</label>
@@ -780,9 +1150,11 @@ export function TaskFormDialog({
                   placeholder="Drive or Notion folder ID"
                 />
               </div>
+              </>
+              )}
 
               {/* ── Delivery Destination ── */}
-              <div className="mt-4">
+              <div className={isAutomated ? "" : "mt-4"}>
                 <p className="text-[11px] font-medium text-foreground mb-2">
                   Delivery Destination
                 </p>

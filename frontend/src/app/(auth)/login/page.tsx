@@ -39,7 +39,7 @@ function LoginForm() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    if (isAuthenticated) router.replace("/chat");
+    if (isAuthenticated) router.replace("/tasks");
   }, [isAuthenticated, router]);
 
   const onSubmit = async (values: FormData) => {
@@ -67,7 +67,7 @@ function LoginForm() {
       );
       if (result?.error) return;
       toast.success("Login successful!");
-      window.location.href = "/chat";
+      window.location.href = "/tasks";
     } catch (error: any) {
       toast.error(error?.message || "An unexpected error occurred.");
     }
@@ -76,7 +76,7 @@ function LoginForm() {
   const handleGoogleLogin = async () => {
     setSocialLoading(true);
     try {
-      await signIn.social({ provider: "google", callbackURL: "/chat" });
+      await signIn.social({ provider: "google", callbackURL: "/tasks" });
     } catch {
       toast.error("Failed to sign in with Google.");
       setSocialLoading(false);

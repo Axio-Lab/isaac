@@ -23,11 +23,12 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  tasks         HumanTask[]
-  skills        UserSkill[]
-  connections   UserConnection[]
-  chatMessages  ChatMessage[]
-  taskChannels  TaskChannel[]
+  tasks          HumanTask[]
+  automatedTasks AutomatedTask[]
+  skills         UserSkill[]
+  connections    UserConnection[]
+  chatMessages   ChatMessage[]
+  taskChannels   TaskChannel[]
 
   @@map("users")
 }
@@ -323,6 +324,47 @@ model UserConnection {
 
   @@index([userId])
   @@map("user_connections")
+}
+
+// ============================================
+// Automated Tasks
+// ============================================
+
+model AutomatedTask {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  prompt         String
+  composioApps   Json              @default("[]")
+  scheduledTimes Json              @default("[]")
+  timezone       String            @default("UTC")
+  deliveryConfig Json?
+  status         TaskStatus        @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  runs           AutomatedTaskRun[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("automated_tasks")
+}
+
+model AutomatedTaskRun {
+  id              String        @id @default(cuid())
+  automatedTaskId String
+  automatedTask   AutomatedTask @relation(fields: [automatedTaskId], references: [id], onDelete: Cascade)
+  triggeredBy     String
+  status          String        @default("RUNNING")
+  result          String?
+  error           String?
+  startedAt       DateTime      @default(now())
+  completedAt     DateTime?
+
+  @@index([automatedTaskId])
+  @@index([status])
+  @@map("automated_task_runs")
 }
 
 // ============================================

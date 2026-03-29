@@ -15,7 +15,7 @@ function CheckEmailContent() {
     if (!email) return;
     setResending(true);
     try {
-      const result = await sendVerificationEmail({ email, callbackURL: "/chat" });
+      const result = await sendVerificationEmail({ email, callbackURL: "/tasks" });
       if (result?.error) {
         toast.error(result.error.message || "Failed to resend verification email.");
       } else {

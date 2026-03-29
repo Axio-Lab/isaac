@@ -612,6 +612,64 @@ const deleteSkill: IsaacTool = {
 };
 
 // ============================================
+// Automated Task Tools
+// ============================================
+
+const listAutomatedTasks: IsaacTool = {
+  name: "listAutomatedTasks",
+  description: "List all automated tasks for the current user, with their latest run status.",
+  inputSchema: z.object({
+    status: z.enum(["ACTIVE", "PAUSED", "DRAFT"]).optional().describe("Filter by task status"),
+  }),
+  execute: async (args, context) => {
+    const where: any = { userId: context.userId };
+    if (args.status) where.status = args.status;
+
+    const tasks = await (context.prisma as any).automatedTask.findMany({
+      where,
+      include: {
+        runs: { orderBy: { startedAt: "desc" }, take: 1 },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return { tasks, count: tasks.length };
+  },
+};
+
+const runAutomatedTask: IsaacTool = {
+  name: "runAutomatedTask",
+  description:
+    "Trigger an automated task to run immediately. The task uses Composio-connected apps " +
+    "to perform its action (e.g. check email, fetch GitHub activity) and returns a report.",
+  inputSchema: z.object({
+    taskId: z.string().describe("The ID of the automated task to run"),
+  }),
+  execute: async (args, context) => {
+    const task = await (context.prisma as any).automatedTask.findFirst({
+      where: { id: args.taskId, userId: context.userId },
+    });
+    if (!task) throw new Error(`Automated task not found: ${args.taskId}`);
+
+    const run = await (context.prisma as any).automatedTaskRun.create({
+      data: {
+        automatedTaskId: task.id,
+        triggeredBy: "CHAT",
+        status: "PENDING",
+      },
+    });
+
+    return {
+      runId: run.id,
+      taskName: task.name,
+      status: "PENDING",
+      message: `Task "${task.name}" has been queued for execution. It will run using: ${
+        Array.isArray(task.composioApps) ? task.composioApps.join(", ") : "connected apps"
+      }.`,
+    };
+  },
+};
+
+// ============================================
 // Export all tools
 // ============================================
 
@@ -632,4 +690,6 @@ export const isaacTools: IsaacTool[] = [
   createSkill,
   updateSkill,
   deleteSkill,
+  listAutomatedTasks,
+  runAutomatedTask,
 ];

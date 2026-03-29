@@ -37,7 +37,7 @@ export default function SignupPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    if (isAuthenticated) router.replace("/chat");
+    if (isAuthenticated) router.replace("/tasks");
   }, [isAuthenticated, router]);
 
   const onSubmit = async (values: FormData) => {
@@ -61,7 +61,7 @@ export default function SignupPage() {
   const handleGoogleSignup = async () => {
     setSocialLoading(true);
     try {
-      await signIn.social({ provider: "google", callbackURL: "/chat" });
+      await signIn.social({ provider: "google", callbackURL: "/tasks" });
     } catch {
       toast.error("Failed to sign in with Google.");
       setSocialLoading(false);

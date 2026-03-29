@@ -6,6 +6,12 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { ChannelMessagingService } from "@/channels/channel-messaging.service";
+import {
+  msgOnboardingWelcome,
+  msgWorkerPaused,
+  msgWorkerReactivated,
+  msgWorkerRemoved,
+} from "@/channels/bot-messages";
 
 export interface WorkerCreateInput {
   name: string;
@@ -89,13 +95,7 @@ export class TaskWorkerService {
     workerName: string,
     taskName: string,
   ): Promise<void> {
-    const text =
-      `Hi ${workerName}, my name is Isaac — I'll be managing your task submissions.\n\n` +
-      `You've been added to: "${taskName}"\n\n` +
-      `When you're ready to start receiving task prompts, reply with "Ready".\n\n` +
-      `Once activated, you'll get prompts at the scheduled times. Just reply with the required evidence ` +
-      `(photo, text, etc.) and I'll review your submission automatically.`;
-    await this.messaging.sendToWorker(workerId, text);
+    await this.messaging.sendToWorker(workerId, msgOnboardingWelcome(workerName, taskName));
   }
 
   async updateWorker(
@@ -135,14 +135,9 @@ export class TaskWorkerService {
   ): Promise<void> {
     let text: string;
     if (newStatus === "INACTIVE") {
-      text =
-        `Hi ${workerName}, you've been paused on "${taskName}". ` +
-        `You won't receive task prompts or be able to submit until you're reactivated. ` +
-        `If you think this is a mistake, reach out to your admin.`;
+      text = msgWorkerPaused(workerName, taskName);
     } else if (newStatus === "ACTIVE") {
-      text =
-        `Hi ${workerName}, you've been reactivated on "${taskName}"! ` +
-        `You'll start receiving task prompts again at the scheduled times. Welcome back!`;
+      text = msgWorkerReactivated(workerName, taskName);
     } else {
       return;
     }
@@ -159,8 +154,7 @@ export class TaskWorkerService {
     this.messaging
       .sendToWorker(
         workerId,
-        `Hi ${worker.name}, you've been removed from "${worker.humanTask.name}". ` +
-          `You will no longer receive task prompts for this task. Take care!`,
+        msgWorkerRemoved(worker.name, worker.humanTask.name),
       )
       .catch((err) =>
         this.logger.warn(`Removal notification failed for worker ${workerId}: ${err.message}`),

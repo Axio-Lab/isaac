@@ -168,6 +168,32 @@ export function useUpdateHumanTask() {
   });
 }
 
+export function useArchiveHumanTask() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { taskId: string }>({
+    mutationFn: ({ taskId }) =>
+      fetchJson(`/api/human-tasks/${taskId}/archive`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["human-tasks"] });
+      toast.success("Task archived — workers notified");
+    },
+    onError: (e) => toast.error(e.message || "Could not archive task"),
+  });
+}
+
+export function useActivateHumanTask() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { taskId: string }>({
+    mutationFn: ({ taskId }) =>
+      fetchJson(`/api/human-tasks/${taskId}/activate`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["human-tasks"] });
+      toast.success("Task reactivated — workers notified");
+    },
+    onError: (e) => toast.error(e.message || "Could not reactivate task"),
+  });
+}
+
 export function useDeleteHumanTask() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { taskId: string }>({
@@ -379,7 +405,12 @@ export function useAiFillTask() {
   return useMutation<
     { fields: Record<string, unknown> },
     Error,
-    { prompt: string }
+    {
+      prompt: string;
+      taskType?: "HUMAN" | "AUTOMATED";
+      /** Composio app names already connected; Isaac uses this to prefill apps and suggest missing ones */
+      connectedAppNames?: string[];
+    }
   >({
     mutationFn: (data) =>
       fetchJson("/api/human-tasks/ai-fill", {

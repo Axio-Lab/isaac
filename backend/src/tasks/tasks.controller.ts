@@ -38,6 +38,26 @@ const AI_FILL_SYSTEM_PROMPT = `You are a task configuration assistant. Given a u
 }
 Only include fields you can confidently infer. Do NOT include taskChannelId, destinations, or reportFolderId as those are user-specific. Return ONLY the JSON object.`;
 
+const AI_FILL_AUTOMATED_SYSTEM_PROMPT = `You are configuring an automated task that Isaac runs on a schedule. It may use Composio-connected tools (Gmail, Slack, Notion, etc.) when needed, or run as pure agent reasoning with no integrations.
+
+Given the user's description and the bracketed context about which apps they already connected, return ONLY valid JSON (no markdown, no backticks) matching this shape:
+{
+  "name": "string (required, short title)",
+  "description": "string",
+  "prompt": "string (required — detailed instructions for the agent: what to check, what to produce, which tools to prefer when applicable)",
+  "composioApps": ["GMAIL"],
+  "connectSuggestions": [ { "app": "GMAIL", "reason": "one short line why connecting helps" } ],
+  "recurrenceType": "ONCE|DAILY|WEEKLY|MONTHLY|CUSTOM",
+  "recurrenceInterval": number,
+  "scheduledTimes": ["HH:MM", ...],
+  "timezone": "IANA timezone string"
+}
+
+Rules:
+- "composioApps": UPPERCASE names. Include ONLY apps that appear in the user's connected-apps list from the context line. If the task needs no external API/tool (e.g. only summarization from pasted context, or internal logic), use [].
+- "connectSuggestions": For each Composio app that would materially help this task but is NOT in the user's connected list, add one object. If the task needs no extra connections, or connected apps already suffice, use []. Do not duplicate apps they already have.
+- Only include object keys you can confidently infer. Return ONLY the JSON object.`;
+
 @Controller("human-tasks")
 @UseGuards(AuthGuard)
 export class TasksController {
@@ -53,14 +73,35 @@ export class TasksController {
 
   @Post("ai-fill")
   @HttpCode(HttpStatus.OK)
-  async aiFill(@Body() body: { prompt: string }) {
+  async aiFill(
+    @Body()
+    body: {
+      prompt: string;
+      taskType?: "HUMAN" | "AUTOMATED";
+      /** UPPERCASE Composio app names the user already connected (e.g. from the UI) */
+      connectedAppNames?: string[];
+    },
+  ) {
     if (!body.prompt?.trim()) {
       return { fields: {} };
     }
 
+    const isAutomated = body.taskType === "AUTOMATED";
+    const connected = (body.connectedAppNames ?? [])
+      .map((s) => String(s).toUpperCase().trim())
+      .filter(Boolean);
+
+    const userPrompt = isAutomated
+      ? `${body.prompt.trim()}\n\n---\nContext — apps this user already has connected in Isaac (use only these in "composioApps"; may be empty): ${connected.length > 0 ? connected.join(", ") : "NONE"}.`
+      : body.prompt.trim();
+
+    const systemPrompt = isAutomated
+      ? AI_FILL_AUTOMATED_SYSTEM_PROMPT
+      : AI_FILL_SYSTEM_PROMPT;
+
     const { text } = await this.agentService.generateTextWithSystemPrompt({
-      systemPrompt: AI_FILL_SYSTEM_PROMPT,
-      userPrompt: body.prompt.trim(),
+      systemPrompt,
+      userPrompt,
     });
 
     try {
@@ -105,6 +146,20 @@ export class TasksController {
     @Body() body: any,
   ) {
     await this.tasksService.updateTask(req.userId, taskId, body);
+    return { success: true };
+  }
+
+  @Post(":taskId/archive")
+  @HttpCode(HttpStatus.OK)
+  async archiveTask(@Req() req: any, @Param("taskId") taskId: string) {
+    await this.tasksService.archiveTask(req.userId, taskId);
+    return { success: true };
+  }
+
+  @Post(":taskId/activate")
+  @HttpCode(HttpStatus.OK)
+  async activateTask(@Req() req: any, @Param("taskId") taskId: string) {
+    await this.tasksService.activateTask(req.userId, taskId);
     return { success: true };
   }
 

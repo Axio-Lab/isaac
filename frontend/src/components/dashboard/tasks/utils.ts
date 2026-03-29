@@ -8,6 +8,8 @@ export function statusColor(status: string) {
       return "bg-primary/10 text-primary border-primary/20";
     case "DRAFT":
       return "bg-muted text-muted-foreground border-border/60";
+    case "ARCHIVED":
+      return "bg-primary/10 text-primary border-primary/20";
     default:
       return "bg-muted text-muted-foreground border-border";
   }

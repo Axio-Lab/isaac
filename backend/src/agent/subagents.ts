@@ -38,7 +38,6 @@ export function getBuiltinSubagents(
         "data and low-confidence findings explicitly. Tailor findings to the user's context.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "content-writer": {
@@ -53,7 +52,6 @@ export function getBuiltinSubagents(
         "agent when needed. Produce polished, ready-to-use output with zero fluff.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "data-analyst": {
@@ -68,7 +66,6 @@ export function getBuiltinSubagents(
         "Flag data quality issues, outliers, and confidence levels explicitly.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "task-executor": {
@@ -84,7 +81,6 @@ export function getBuiltinSubagents(
         "report it clearly rather than guessing. Always confirm completion with evidence.",
       tools: FULL_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -105,7 +101,6 @@ export function getBuiltinSubagents(
         "actionable enough for a team to start executing immediately.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "strategic-advisor": {
@@ -122,7 +117,6 @@ export function getBuiltinSubagents(
         "job is to sharpen strategy, not validate what the user already thinks.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "okr-coach": {
@@ -140,7 +134,6 @@ export function getBuiltinSubagents(
         "best OKRs create clarity and urgency — not bureaucracy.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "decision-analyst": {
@@ -157,7 +150,6 @@ export function getBuiltinSubagents(
         "The best decision analysis makes the right choice obvious.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "risk-manager": {
@@ -174,7 +166,6 @@ export function getBuiltinSubagents(
         "to mitigate, transfer, accept, or avoid. Make risk-taking deliberate and informed.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "scenario-planner": {
@@ -192,7 +183,6 @@ export function getBuiltinSubagents(
         "the future but to be ready for multiple versions of it.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "change-manager": {
@@ -210,7 +200,6 @@ export function getBuiltinSubagents(
         "adopted is just expensive noise.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "sprint-master": {
@@ -228,7 +217,6 @@ export function getBuiltinSubagents(
         "sprint master makes the team self-managing over time.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -249,7 +237,6 @@ export function getBuiltinSubagents(
         "Never write code that works only in a demo — write code that works in production.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "devops-engineer": {
@@ -267,7 +254,6 @@ export function getBuiltinSubagents(
         "engineer to follow at 3am.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "qa-engineer": {
@@ -283,7 +269,6 @@ export function getBuiltinSubagents(
         "top 10 ways this breaks? Write tests that are maintainable and self-documenting.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "security-analyst": {
@@ -300,7 +285,6 @@ export function getBuiltinSubagents(
         "actionable remediation steps. Only recommend controls that actually reduce risk.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "data-engineer": {
@@ -317,7 +301,6 @@ export function getBuiltinSubagents(
         "patterns, not just the ingestion. Data that can't be trusted is worse than no data.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "ml-engineer": {
@@ -334,7 +317,6 @@ export function getBuiltinSubagents(
         "a notebook but fails in production is not done. Ship ML that actually works.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "automation-architect": {
@@ -352,7 +334,6 @@ export function getBuiltinSubagents(
         "without ambiguity.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "api-integration-specialist": {
@@ -369,7 +350,6 @@ export function getBuiltinSubagents(
         "Document every integration so someone else can maintain it.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "technical-writer": {
@@ -387,7 +367,6 @@ export function getBuiltinSubagents(
         "correct. Ambiguity is a bug.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "ai-strategist": {
@@ -405,7 +384,6 @@ export function getBuiltinSubagents(
         "invisible to the end customer — they just experience something that works better.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -426,7 +404,6 @@ export function getBuiltinSubagents(
         "requirements clearly. Treat every HR document as something a real human will read.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "team-performance-coach": {
@@ -443,7 +420,6 @@ export function getBuiltinSubagents(
         "Your goal: make every team measurably better, not just feel better.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     recruiter: {
@@ -460,7 +436,6 @@ export function getBuiltinSubagents(
         "The best candidates have options — make every touchpoint count.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "culture-builder": {
@@ -478,7 +453,6 @@ export function getBuiltinSubagents(
         "systems that make the right behaviors the default.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "executive-coach": {
@@ -495,7 +469,6 @@ export function getBuiltinSubagents(
         "build systems and people, not dependency on themselves.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -516,7 +489,6 @@ export function getBuiltinSubagents(
         "king, and every expense needs a return.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "financial-controller": {
@@ -533,7 +505,6 @@ export function getBuiltinSubagents(
         "year-end. Clean books are the foundation everything else is built on.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "pricing-strategist": {
@@ -551,7 +522,6 @@ export function getBuiltinSubagents(
         "companies underinvest in — treat it as a product.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "operations-optimizer": {
@@ -568,7 +538,6 @@ export function getBuiltinSubagents(
         "time saved, error rate reduction, cost savings.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "procurement-specialist": {
@@ -585,7 +554,6 @@ export function getBuiltinSubagents(
         "vendor decisions should be auditable and explainable.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "supply-chain-analyst": {
@@ -602,7 +570,6 @@ export function getBuiltinSubagents(
         "optimized. Build systems that are both efficient and antifragile.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "report-generator": {
@@ -619,7 +586,6 @@ export function getBuiltinSubagents(
         "Make reports short enough to be read and specific enough to drive decisions.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -640,7 +606,6 @@ export function getBuiltinSubagents(
         "jurisdiction matters, say so. When a matter is complex, recommend escalation.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "compliance-officer": {
@@ -657,7 +622,6 @@ export function getBuiltinSubagents(
         "staying compliant the path of least resistance, not an annual scramble.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -678,7 +642,6 @@ export function getBuiltinSubagents(
         "the only metric that matters — everything else is a leading indicator.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "crm-manager": {
@@ -695,7 +658,6 @@ export function getBuiltinSubagents(
         "not just what happened last quarter.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "revenue-operations": {
@@ -712,7 +674,6 @@ export function getBuiltinSubagents(
         "everyone more effective without adding headcount.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "customer-success-manager": {
@@ -729,7 +690,6 @@ export function getBuiltinSubagents(
         "Expansion revenue is the best revenue — build systems to generate it.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "fundraising-strategist": {
@@ -746,7 +706,6 @@ export function getBuiltinSubagents(
         "competitive dynamics. Never run out of runway before the next close.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -767,7 +726,6 @@ export function getBuiltinSubagents(
         "of pitches. Measure everything and optimize ruthlessly.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "growth-hacker": {
@@ -785,7 +743,6 @@ export function getBuiltinSubagents(
         "Growth is systematic, not a bag of tricks.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "seo-specialist": {
@@ -801,7 +758,6 @@ export function getBuiltinSubagents(
         "that ranks AND converts. SEO is a long game — build for compound returns.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "social-media-manager": {
@@ -818,7 +774,6 @@ export function getBuiltinSubagents(
         "what performs and ruthlessly cut what doesn't.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "brand-strategist": {
@@ -835,7 +790,6 @@ export function getBuiltinSubagents(
         "easier, sales faster, and hiring better. Weak brands compete on price.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "email-marketer": {
@@ -852,7 +806,6 @@ export function getBuiltinSubagents(
         "systematically. Email is the highest-ROI channel for most businesses.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "paid-ads-specialist": {
@@ -869,7 +822,6 @@ export function getBuiltinSubagents(
         "carefully. Paid ads without a clear path to positive ROI should not run.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "market-intelligence-analyst": {
@@ -886,7 +838,6 @@ export function getBuiltinSubagents(
         "actionable intelligence, not information dumps.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "competitive-intelligence-agent": {
@@ -903,7 +854,6 @@ export function getBuiltinSubagents(
         "we do in response? Don't just collect information — provide intelligence that drives action.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "thought-leadership-strategist": {
@@ -921,7 +871,6 @@ export function getBuiltinSubagents(
         "their audience thinks, not just what they know.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -942,7 +891,6 @@ export function getBuiltinSubagents(
         "on scope creep. Ship things that matter.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "ux-designer": {
@@ -959,7 +907,6 @@ export function getBuiltinSubagents(
         "not aesthetics. The best UX is invisible — users just accomplish their goals.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "product-analyst": {
@@ -976,7 +923,6 @@ export function getBuiltinSubagents(
         "actionable signals, not just data for data's sake.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "accessibility-specialist": {
@@ -993,7 +939,6 @@ export function getBuiltinSubagents(
         "thing to do. The best accessible design is just good design.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -1014,7 +959,6 @@ export function getBuiltinSubagents(
         "open questions, and key points. Ruthlessly eliminate meetings that should be emails.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "communications-director": {
@@ -1031,7 +975,6 @@ export function getBuiltinSubagents(
         "what it means, and what comes next.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "investor-relations-manager": {
@@ -1048,7 +991,6 @@ export function getBuiltinSubagents(
         "late — investors who trust you become your best allies.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "pitch-coach": {
@@ -1065,7 +1007,6 @@ export function getBuiltinSubagents(
         "A great pitch makes the audience feel they'd be making a mistake to say no.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -1090,7 +1031,6 @@ export function getBuiltinSubagents(
         "The best partnerships are ones where both sides win without the deal needing policing.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "grant-writer": {
@@ -1108,7 +1048,6 @@ export function getBuiltinSubagents(
         "Track deadlines and reporting requirements obsessively.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "community-manager": {
@@ -1125,7 +1064,6 @@ export function getBuiltinSubagents(
         "ways to participate. Community is a moat — it compounds over time and can't be bought.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "event-coordinator": {
@@ -1142,7 +1080,6 @@ export function getBuiltinSubagents(
         "5 most likely things to go wrong. Post-event: capture leads, send follow-ups, measure.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -1163,7 +1100,6 @@ export function getBuiltinSubagents(
         "is the one that actually gets read.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "training-developer": {
@@ -1180,7 +1116,6 @@ export function getBuiltinSubagents(
         "The best training changes behavior, not just awareness.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -1202,7 +1137,6 @@ export function getBuiltinSubagents(
         "the product team.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "feedback-analyst": {
@@ -1219,7 +1153,6 @@ export function getBuiltinSubagents(
         "(silent majority). Present findings as a prioritized insight deck, not a raw data dump.",
       tools: CODE_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     // ══════════════════════════════════════════════════════
@@ -1241,7 +1174,6 @@ export function getBuiltinSubagents(
         "advantage, not a compliance burden.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
     "localization-specialist": {
@@ -1258,7 +1190,6 @@ export function getBuiltinSubagents(
         "A message that works in one market can offend in another. Get the nuance right.",
       tools: READ_ONLY_TOOLS,
       mcpServers: mcpServerNames,
-      model: "sonnet",
     },
 
   };

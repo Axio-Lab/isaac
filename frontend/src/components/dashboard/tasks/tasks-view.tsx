@@ -1,22 +1,39 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   useHumanTasks,
   useCreateHumanTask,
   useUpdateHumanTask,
+  useArchiveHumanTask,
+  useActivateHumanTask,
   useDeleteHumanTask,
   usePauseHumanTask,
   useResumeHumanTask,
 } from "@/hooks/useHumanTasks";
 import type { HumanTask } from "@/hooks/useHumanTasks";
+import {
+  useAutomatedTasks,
+  useCreateAutomatedTask,
+  useUpdateAutomatedTask,
+  useActivateAutomatedTask,
+  useDeleteAutomatedTask,
+  useRunAutomatedTask,
+  usePauseAutomatedTask,
+  useResumeAutomatedTask,
+} from "@/hooks/useAutomatedTasks";
+import type { AutomatedTask } from "@/hooks/useAutomatedTasks";
 import { useActiveChannels } from "@/hooks/useTaskChannels";
-import { useComposioConnectedAccounts } from "@/hooks/useComposioConnections";
-import { Plus, Loader2, CalendarDays, FileEdit } from "lucide-react";
+import {
+  useComposioApps,
+  useComposioConnectedAccounts,
+} from "@/hooks/useComposioConnections";
+import { Plus, Loader2, CalendarDays, FileEdit, Search } from "lucide-react";
 import { toast } from "sonner";
 import { GlassButton } from "@/components/ui/glass-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TaskCard } from "./task-card";
+import { AutomatedTaskCard } from "./automated-task-card";
 import { TaskFormDialog } from "./task-form-dialog";
 import { WorkersDialog } from "./workers-dialog";
 import {
@@ -28,30 +45,79 @@ import {
   type DeliveryDestination,
 } from "./constants";
 
+type AnyTask = (HumanTask & { _taskType: "HUMAN" }) | (AutomatedTask & { _taskType: "AUTOMATED" });
+
 export function TasksView() {
   const { data, isLoading } = useHumanTasks();
   const createTask = useCreateHumanTask();
   const updateTask = useUpdateHumanTask();
+  const archiveHumanTask = useArchiveHumanTask();
+  const activateHumanTask = useActivateHumanTask();
   const deleteTask = useDeleteHumanTask();
   const pauseTask = usePauseHumanTask();
   const resumeTask = useResumeHumanTask();
+
+  const { data: autoData, isLoading: autoLoading } = useAutomatedTasks();
+  const createAutoTask = useCreateAutomatedTask();
+  const updateAutoTask = useUpdateAutomatedTask();
+  const activateAutoTask = useActivateAutomatedTask();
+  const deleteAutoTask = useDeleteAutomatedTask();
+  const runAutoTask = useRunAutomatedTask();
+  const pauseAutoTask = usePauseAutomatedTask();
+  const resumeAutoTask = useResumeAutomatedTask();
 
   const { data: channelsData } = useActiveChannels();
   const channels = channelsData?.channels ?? [];
 
   const { data: composioData } = useComposioConnectedAccounts();
   const connectedAccounts = composioData?.accounts ?? [];
+  const { data: composioAppsData } = useComposioApps();
+  const composioAppCatalog = composioAppsData?.apps ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<HumanTask | null>(null);
+  const [editingAutoTask, setEditingAutoTask] = useState<AutomatedTask | null>(null);
   const [form, setForm] = useState<TaskFormData>(defaultForm);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [draftPending, setDraftPending] = useState(false);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [workersTask, setWorkersTask] = useState<HumanTask | null>(null);
-  const [taskPendingDelete, setTaskPendingDelete] = useState<HumanTask | null>(null);
+  type TaskPendingAction =
+    | { kind: "archive-human"; id: string; name: string }
+    | { kind: "delete-human"; id: string; name: string }
+    | { kind: "archive-auto"; id: string; name: string }
+    | { kind: "delete-auto"; id: string; name: string };
 
-  const tasks = data?.tasks ?? [];
+  const [taskPendingAction, setTaskPendingAction] =
+    useState<TaskPendingAction | null>(null);
+  const [taskSearch, setTaskSearch] = useState("");
+
+  const humanTasks = data?.tasks ?? [];
+  const automatedTasks = autoData?.tasks ?? [];
+
+  const allTasks: AnyTask[] = useMemo(() => {
+    const human = humanTasks.map((t) => ({ ...t, _taskType: "HUMAN" as const }));
+    const auto = automatedTasks.map((t) => ({ ...t, _taskType: "AUTOMATED" as const }));
+    return [...human, ...auto].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [humanTasks, automatedTasks]);
+
+  const filteredTasks = useMemo(() => {
+    const q = taskSearch.trim().toLowerCase();
+    if (!q) return allTasks;
+    return allTasks.filter((t) => {
+      const name = (t.name ?? "").toLowerCase();
+      const desc = (t.description ?? "").toLowerCase();
+      if (t._taskType === "AUTOMATED") {
+        const prompt = (t.prompt ?? "").toLowerCase();
+        return (
+          name.includes(q) || desc.includes(q) || prompt.includes(q)
+        );
+      }
+      return name.includes(q) || desc.includes(q);
+    });
+  }, [allTasks, taskSearch]);
 
   useEffect(() => {
     try {
@@ -62,6 +128,7 @@ export function TasksView() {
 
   function openCreate() {
     setEditingTask(null);
+    setEditingAutoTask(null);
     setForm({ ...defaultForm, timezone: getBrowserTimezone() });
     setDialogOpen(true);
   }
@@ -101,8 +168,11 @@ export function TasksView() {
       };
     }
 
+    setEditingAutoTask(null);
     setEditingTask(task);
     setForm({
+      ...defaultForm,
+      taskType: "HUMAN",
       name: task.name,
       description: task.description || "",
       evidenceType: task.evidenceType,
@@ -125,7 +195,38 @@ export function TasksView() {
     setDialogOpen(true);
   }
 
-  const buildPayload = useCallback(
+  function openEditAutoTask(task: AutomatedTask) {
+    const dc = (task.deliveryConfig ?? {}) as Record<string, unknown>;
+    const rawDests = dc.destinations as
+      | Array<{ type: string; channelId?: string; value?: string; channelName?: string }>
+      | undefined;
+    let dest: DeliveryDestination = { ...emptyDestination };
+    if (Array.isArray(rawDests) && rawDests.length > 0) {
+      const first = rawDests[0];
+      dest = {
+        type: first.type || "",
+        channelId: first.channelId || first.value || "",
+        channelName: first.channelName || "",
+      };
+    }
+
+    setEditingTask(null);
+    setEditingAutoTask(task);
+    setForm({
+      ...defaultForm,
+      taskType: "AUTOMATED",
+      name: task.name,
+      description: task.description || "",
+      prompt: task.prompt,
+      composioApps: Array.isArray(task.composioApps) ? task.composioApps : [],
+      scheduledTimes: task.scheduledTimes?.join(", ") || "",
+      timezone: task.timezone || getBrowserTimezone(),
+      deliveryDestination: dest,
+    });
+    setDialogOpen(true);
+  }
+
+  const buildHumanPayload = useCallback(
     (status?: string) => {
       const scheduledTimes = form.scheduledTimes
         .split(",")
@@ -182,19 +283,56 @@ export function TasksView() {
     [form],
   );
 
+  const buildAutoPayload = useCallback(
+    (status?: string) => {
+      const scheduledTimes = form.scheduledTimes
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const destinations: Array<Record<string, string>> = [];
+      const dest = form.deliveryDestination;
+      if (dest.type && dest.channelId) {
+        destinations.push({
+          type: dest.type,
+          channelId: dest.channelId,
+          channelName: dest.channelName,
+        });
+      }
+
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        description: form.description || null,
+        prompt: form.prompt,
+        composioApps: form.composioApps,
+        scheduledTimes,
+        timezone: form.timezone,
+        deliveryConfig: { destinations },
+      };
+
+      if (status) payload.status = status;
+      return payload;
+    },
+    [form],
+  );
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = buildPayload();
-    if (editingTask) {
-      if (editingTask.status === "DRAFT") {
-        payload.status = "ACTIVE";
+    if (form.taskType === "AUTOMATED") {
+      const payload = buildAutoPayload();
+      if (editingAutoTask) {
+        await updateAutoTask.mutateAsync({ taskId: editingAutoTask.id, data: payload as Partial<AutomatedTask> });
+      } else {
+        await createAutoTask.mutateAsync(payload as Partial<AutomatedTask>);
       }
-      await updateTask.mutateAsync({
-        taskId: editingTask.id,
-        data: payload as Partial<HumanTask>,
-      });
     } else {
-      await createTask.mutateAsync(payload as Partial<HumanTask>);
+      const payload = buildHumanPayload();
+      if (editingTask) {
+        if (editingTask.status === "DRAFT") payload.status = "ACTIVE";
+        await updateTask.mutateAsync({ taskId: editingTask.id, data: payload as Partial<HumanTask> });
+      } else {
+        await createTask.mutateAsync(payload as Partial<HumanTask>);
+      }
     }
     setDialogOpen(false);
   }
@@ -206,14 +344,20 @@ export function TasksView() {
     }
     setDraftPending(true);
     try {
-      const payload = buildPayload("DRAFT");
-      if (editingTask) {
-        await updateTask.mutateAsync({
-          taskId: editingTask.id,
-          data: payload as Partial<HumanTask>,
-        });
+      if (form.taskType === "AUTOMATED") {
+        const payload = buildAutoPayload("DRAFT");
+        if (editingAutoTask) {
+          await updateAutoTask.mutateAsync({ taskId: editingAutoTask.id, data: payload as Partial<AutomatedTask> });
+        } else {
+          await createAutoTask.mutateAsync(payload as Partial<AutomatedTask>);
+        }
       } else {
-        await createTask.mutateAsync(payload as Partial<HumanTask>);
+        const payload = buildHumanPayload("DRAFT");
+        if (editingTask) {
+          await updateTask.mutateAsync({ taskId: editingTask.id, data: payload as Partial<HumanTask> });
+        } else {
+          await createTask.mutateAsync(payload as Partial<HumanTask>);
+        }
       }
       toast.success("Task saved as draft");
       setDialogOpen(false);
@@ -236,16 +380,100 @@ export function TasksView() {
     }
   }
 
-  function requestDeleteTask(task: HumanTask) {
-    setTaskPendingDelete(task);
+  async function handleAutoTaskPauseResume(task: AutomatedTask) {
+    setActionLoadingId(task.id);
+    try {
+      if (task.status === "ACTIVE") {
+        await pauseAutoTask.mutateAsync({ taskId: task.id });
+      } else {
+        await resumeAutoTask.mutateAsync({ taskId: task.id });
+      }
+    } finally {
+      setActionLoadingId(null);
+    }
   }
 
-  async function confirmDeleteTask() {
-    if (!taskPendingDelete) return;
-    await deleteTask.mutateAsync({ taskId: taskPendingDelete.id });
+  async function handleRunAutoTask(task: AutomatedTask) {
+    setActionLoadingId(task.id);
+    try {
+      await runAutoTask.mutateAsync({ taskId: task.id });
+    } finally {
+      setActionLoadingId(null);
+    }
   }
 
-  if (isLoading) {
+  function requestArchiveHumanTask(task: HumanTask) {
+    setTaskPendingAction({
+      kind: "archive-human",
+      id: task.id,
+      name: task.name,
+    });
+  }
+
+  function requestArchiveAutoTask(task: AutomatedTask) {
+    setTaskPendingAction({
+      kind: "archive-auto",
+      id: task.id,
+      name: task.name,
+    });
+  }
+
+  async function handleReactivateHumanTask(task: HumanTask) {
+    setActionLoadingId(task.id);
+    try {
+      await activateHumanTask.mutateAsync({ taskId: task.id });
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleReactivateAutoTask(task: AutomatedTask) {
+    setActionLoadingId(task.id);
+    try {
+      await activateAutoTask.mutateAsync({ taskId: task.id });
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  function requestDeleteHumanTaskPermanently(task: HumanTask) {
+    setTaskPendingAction({
+      kind: "delete-human",
+      id: task.id,
+      name: task.name,
+    });
+  }
+
+  function requestDeleteAutoTaskPermanently(task: AutomatedTask) {
+    setTaskPendingAction({
+      kind: "delete-auto",
+      id: task.id,
+      name: task.name,
+    });
+  }
+
+  async function confirmTaskPendingAction() {
+    if (!taskPendingAction) return;
+    switch (taskPendingAction.kind) {
+      case "archive-human":
+        await archiveHumanTask.mutateAsync({ taskId: taskPendingAction.id });
+        break;
+      case "delete-human":
+        await deleteTask.mutateAsync({ taskId: taskPendingAction.id });
+        break;
+      case "archive-auto":
+        await updateAutoTask.mutateAsync({
+          taskId: taskPendingAction.id,
+          data: { status: "ARCHIVED" },
+        });
+        break;
+      case "delete-auto":
+        await deleteAutoTask.mutateAsync({ taskId: taskPendingAction.id });
+        break;
+    }
+  }
+
+  if (isLoading || autoLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -255,7 +483,7 @@ export function TasksView() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div>
           <h1 className="text-lg font-semibold text-foreground tracking-tight">
             Tasks
@@ -267,12 +495,24 @@ export function TasksView() {
         <GlassButton
           onClick={openCreate}
           size="sm"
-          className="glass-filled"
+          className="glass-filled shrink-0"
           contentClassName="flex items-center gap-1.5 text-xs"
         >
           <Plus className="h-3 w-3" />
           Create Task
         </GlassButton>
+      </div>
+
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          type="search"
+          value={taskSearch}
+          onChange={(e) => setTaskSearch(e.target.value)}
+          placeholder="Search by name, description, or prompt (automated)…"
+          className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          aria-label="Search tasks"
+        />
       </div>
 
       {hasSavedDraft && (
@@ -292,7 +532,7 @@ export function TasksView() {
         </button>
       )}
 
-      {tasks.length === 0 ? (
+      {allTasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center mb-3">
             <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -301,19 +541,44 @@ export function TasksView() {
             No tasks yet. Create your first task to get started.
           </p>
         </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center mb-3">
+            <Search className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            No tasks match &ldquo;{taskSearch.trim()}&rdquo;. Try a different search.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              actionLoadingId={actionLoadingId}
-              onEdit={openEdit}
-              onPauseResume={handlePauseResume}
-              onDelete={requestDeleteTask}
-              onManageWorkers={setWorkersTask}
-            />
-          ))}
+          {filteredTasks.map((task) =>
+            task._taskType === "AUTOMATED" ? (
+              <AutomatedTaskCard
+                key={`auto-${task.id}`}
+                task={task}
+                actionLoadingId={actionLoadingId}
+                onEdit={openEditAutoTask}
+                onPauseResume={handleAutoTaskPauseResume}
+                onArchive={requestArchiveAutoTask}
+                onReactivate={handleReactivateAutoTask}
+                onDeletePermanently={requestDeleteAutoTaskPermanently}
+                onRun={handleRunAutoTask}
+              />
+            ) : (
+              <TaskCard
+                key={`human-${task.id}`}
+                task={task}
+                actionLoadingId={actionLoadingId}
+                onEdit={openEdit}
+                onPauseResume={handlePauseResume}
+                onArchive={requestArchiveHumanTask}
+                onReactivate={handleReactivateHumanTask}
+                onDeletePermanently={requestDeleteHumanTaskPermanently}
+                onManageWorkers={setWorkersTask}
+              />
+            ),
+          )}
         </div>
       )}
 
@@ -327,35 +592,55 @@ export function TasksView() {
       )}
 
       <ConfirmDialog
-        open={taskPendingDelete !== null}
+        open={taskPendingAction !== null}
         onOpenChange={(open) => {
-          if (!open) setTaskPendingDelete(null);
+          if (!open) setTaskPendingAction(null);
         }}
-        title="Delete task?"
-        description={
-          taskPendingDelete
-            ? `Delete "${taskPendingDelete.name}"? This cannot be undone.`
-            : undefined
+        title={
+          taskPendingAction?.kind === "delete-auto" ||
+          taskPendingAction?.kind === "delete-human"
+            ? "Delete permanently?"
+            : "Archive task?"
         }
-        confirmLabel="Delete"
+        description={
+          taskPendingAction
+            ? taskPendingAction.kind === "delete-auto" ||
+                taskPendingAction.kind === "delete-human"
+              ? `Permanently delete "${taskPendingAction.name}"? This cannot be undone.`
+              : `Archive "${taskPendingAction.name}"? It stays in this list as Archived. Reminders and submissions stop until you reactivate. Connected workers are notified.`
+            : ""
+        }
+        confirmLabel={
+          taskPendingAction?.kind === "delete-auto" ||
+          taskPendingAction?.kind === "delete-human"
+            ? "Delete permanently"
+            : "Archive"
+        }
         cancelLabel="Cancel"
-        variant="destructive"
-        onConfirm={confirmDeleteTask}
+        variant={
+          taskPendingAction?.kind === "delete-auto" ||
+          taskPendingAction?.kind === "delete-human"
+            ? "destructive"
+            : "default"
+        }
+        onConfirm={confirmTaskPendingAction}
       />
 
       <TaskFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editingTask={editingTask}
+        editingAutoTask={editingAutoTask}
         form={form}
         setForm={setForm}
         onSubmit={handleSubmit}
         onSaveDraft={handleSaveDraft}
         draftPending={draftPending}
-        createPending={createTask.isPending && !draftPending}
-        updatePending={updateTask.isPending && !draftPending}
+        createPending={(createTask.isPending || createAutoTask.isPending) && !draftPending}
+        updatePending={(updateTask.isPending || updateAutoTask.isPending) && !draftPending}
         channels={channels}
         connectedAccounts={connectedAccounts}
+        composioAppCatalog={composioAppCatalog}
       />
     </div>
   );

@@ -122,9 +122,13 @@ export interface DeliveryDestination {
   channelName: string;
 }
 
+export type TaskFormType = "HUMAN" | "AUTOMATED";
+
 export interface TaskFormData {
+  taskType: TaskFormType;
   name: string;
   description: string;
+  // Human task fields
   evidenceType: string;
   recurrenceType: string;
   recurrenceInterval: number;
@@ -140,6 +144,9 @@ export interface TaskFormData {
   reportDocType: string;
   reportFolderId: string;
   deliveryDestination: DeliveryDestination;
+  // Automated task fields
+  prompt: string;
+  composioApps: string[];
 }
 
 export const emptyDestination: DeliveryDestination = {
@@ -149,6 +156,7 @@ export const emptyDestination: DeliveryDestination = {
 };
 
 export const defaultForm: TaskFormData = {
+  taskType: "HUMAN",
   name: "",
   description: "",
   evidenceType: "PHOTO",
@@ -166,4 +174,6 @@ export const defaultForm: TaskFormData = {
   reportDocType: "googledocs",
   reportFolderId: "",
   deliveryDestination: { ...emptyDestination },
+  prompt: "",
+  composioApps: [],
 };

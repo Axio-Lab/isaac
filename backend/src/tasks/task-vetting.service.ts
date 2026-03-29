@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
+import { msgVettingFeedback } from "@/channels/bot-messages";
 
 function getPublicImageUrl(imageUrl: string): string {
   const base = (process.env.API_URL || "").replace(/\/$/, "");
@@ -145,15 +146,12 @@ export class TaskVettingService {
       },
     });
 
-    const findings = result.findings
-      .map((f: string) => `- ${f}`)
-      .join("\n");
-    let feedback = `Score: ${result.score}/100 — ${passed ? "Passed!" : "Did not pass"}\n\n${findings}\n\n${result.summary}`;
-
-    if (!passed && submission.humanTask.resubmissionAllowed) {
-      feedback += "\n\nPlease try again and send a new submission.";
-    }
-
-    return feedback;
+    return msgVettingFeedback(
+      result.score,
+      passed,
+      result.findings,
+      result.summary,
+      !passed && !!submission.humanTask.resubmissionAllowed,
+    );
   }
 }

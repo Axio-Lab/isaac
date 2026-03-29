@@ -2,6 +2,14 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service";
 import { ChannelMessagingService } from "./channel-messaging.service";
 import { buildExternalIdCandidates } from "./platform-utils";
+import {
+  msgOnboardingSuccess,
+  msgOnboardingPrompt,
+  msgNoPendingSubmission,
+  msgSubmissionReceived,
+  msgSubmissionReceivedReview,
+  msgCannotSubmitTaskArchived,
+} from "./bot-messages";
 
 @Injectable()
 export class InboundMessageService {
@@ -54,6 +62,14 @@ export class InboundMessageService {
 
     const trimmed = (text || "").trim().toLowerCase();
 
+    if (worker.humanTask.status === "ARCHIVED") {
+      await this.messaging.sendToWorker(
+        worker.id,
+        msgCannotSubmitTaskArchived(worker.name, worker.humanTask.name),
+      );
+      return true;
+    }
+
     if (trimmed === "ready") {
       await (this.prisma as any).humanWorker.update({
         where: { id: worker.id },
@@ -62,13 +78,12 @@ export class InboundMessageService {
       this.logger.log(`Worker ${worker.name} (${worker.id}) activated via "ready" reply`);
       await this.messaging.sendToWorker(
         worker.id,
-        `Great, ${worker.name}! You're now active on "${worker.humanTask.name}". ` +
-          `You'll receive task prompts at the scheduled times — just reply with the required evidence when prompted. Let's go!`,
+        msgOnboardingSuccess(worker.name, worker.humanTask.name),
       );
     } else {
       await this.messaging.sendToWorker(
         worker.id,
-        `Hi ${worker.name}, please reply with "Ready" to confirm you're set up and start receiving tasks.`,
+        msgOnboardingPrompt(worker.name),
       );
     }
 
@@ -101,6 +116,14 @@ export class InboundMessageService {
       return;
     }
 
+    if (worker.humanTask.status === "ARCHIVED") {
+      await this.messaging.sendToWorker(
+        worker.id,
+        msgCannotSubmitTaskArchived(worker.name, worker.humanTask.name),
+      );
+      return;
+    }
+
     const pendingSubmission = await (this.prisma as any).taskSubmission.findFirst({
       where: {
         workerId: worker.id,
@@ -120,19 +143,10 @@ export class InboundMessageService {
         ? task.scheduledTimes.filter((t): t is string => typeof t === "string")
         : [];
       const tz = task.timezone || "UTC";
-      const scheduleLine =
-        times.length > 0
-          ? `\n\nThis task is set to prompt you around: ${times.join(", ")} (${tz}).`
-          : "\n\nNo fixed daily times are configured — you'll be notified when the next round opens.";
 
       await this.messaging.sendToWorker(
         worker.id,
-        `Hi ${worker.name},\n\n` +
-          `There isn't an open submission for "${task.name}" right now. ` +
-          `We're not expecting evidence from you until the next assignment is created for you.` +
-          scheduleLine +
-          `\n\nWhen it's time, you'll get a message here asking for your proof — reply to that one with your evidence. ` +
-          `If you already sent everything for the latest request, you're all set until the next round.`,
+        msgNoPendingSubmission(worker.name, task.name, times, tz),
       );
       return;
     }
@@ -160,7 +174,7 @@ export class InboundMessageService {
     if (!this.vetSubmission) {
       await this.messaging.sendToWorker(
         worker.id,
-        `Thanks ${worker.name}, your submission has been received!`,
+        msgSubmissionReceived(worker.name),
       );
       return;
     }
@@ -172,7 +186,7 @@ export class InboundMessageService {
       this.logger.error(`Vetting failed for submission ${submissionId}`, err);
       await this.messaging.sendToWorker(
         worker.id,
-        `Thanks ${worker.name}, your submission has been received and is being reviewed.`,
+        msgSubmissionReceivedReview(worker.name),
       );
     }
   }
