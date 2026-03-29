@@ -1,0 +1,23 @@
+# Isaac AI Micromanager
+# https://isaac.ai
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /signup
+
+Disallow: /api/
+Disallow: /tasks/
+Disallow: /liveboard/
+Disallow: /reports/
+Disallow: /channels/
+Disallow: /skills/
+Disallow: /chat/
+Disallow: /connected-apps/
+Disallow: /check-email/
+Disallow: /forgot-password/
+
+# LLM-specific content
+# See /llms.txt for structured product information
+
+Sitemap: https://isaac.ai/sitemap.xml

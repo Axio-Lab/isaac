@@ -1,0 +1,83 @@
+# Isaac - AI Micromanager
+
+> Isaac is an autonomous AI micromanagement product that helps teams manage tasks, track compliance, and generate reports.
+
+## Product Overview
+
+Isaac is a standalone SaaS platform built for operations teams, managers, and business owners who need intelligent task management and workforce compliance monitoring. Isaac acts as an AI micromanager that can autonomously create tasks, monitor submissions, score evidence, generate reports, and deliver insights across multiple channels.
+
+## Core Features
+
+### AI Agent (Isaac)
+- Autonomous AI micromanager powered by Claude (Anthropic)
+- Natural language interface for task creation and management
+- Plan mode for reviewing actions before execution
+- Connects to external tools via Composio (GitHub, Slack, Gmail, Google Docs, Notion, etc.)
+- Built-in subagents: researcher, content-writer, data-analyst, task-executor
+- Extensible via user-defined skills
+
+### Task Management
+- Create and manage recurring tasks with configurable schedules
+- Support for multiple evidence types: photo, video, text, document, audio, location
+- Configurable recurrence: once, daily, weekly, monthly, custom
+- Task channels for notifications via WhatsApp, Telegram, Slack, Discord
+- Pause/resume task workflows
+
+### Worker Management
+- Assign workers to tasks across platforms (WhatsApp, Telegram, Slack, Discord, Web)
+- Track worker onboarding status
+- Role-based assignments
+
+### Submission Tracking & AI Scoring
+- Automated evidence collection from workers
+- AI-powered submission vetting with 0-100 scoring
+- Configurable passing scores and grace periods
+- Resubmission support
+
+### Compliance Reports
+- Automated daily report generation at configured times
+- Timezone-aware scheduling
+- Report delivery to Google Docs or Notion via Composio
+- Distribution via WhatsApp, Telegram, Slack, Discord, Gmail
+- Markdown-formatted summaries with metrics
+
+### Skills System
+- Add custom skills to enhance Isaac's capabilities
+- Import skills from URLs (SKILL.md format)
+- Skills are injected into the AI system prompt
+
+### Composio Integration
+- Connect to 200+ external tools via Composio
+- OAuth-based app connections
+- MCP (Model Context Protocol) integration for AI tool access
+- Actions: create documents, send messages, fetch data, and more
+
+## Technical Architecture
+
+- **Frontend**: Next.js (App Router) with React, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: NestJS with TypeScript, Prisma ORM, PostgreSQL
+- **AI**: Claude Agent SDK with MCP tools, streaming SSE responses
+- **Auth**: BetterAuth with email/password + Google OAuth
+- **Integrations**: Composio for external tool connections
+
+## API
+
+The Isaac API is available at `/api/` with the following main endpoints:
+
+- `/api/human-tasks` - Task CRUD and management
+- `/api/human-tasks/:id/workers` - Worker management
+- `/api/human-tasks/:id/submissions` - Submission tracking
+- `/api/human-tasks/:id/reports` - Report generation
+- `/api/task-channels` - Channel management
+- `/api/skills` - Skill management
+- `/api/composio/connections` - Composio app connections
+- `/api/agent/chat` - Isaac AI chat (SSE streaming)
+
+## Pricing
+
+Contact us for pricing information.
+
+## Contact
+
+- Website: https://isaac.ai
+- Support: support@isaac.ai

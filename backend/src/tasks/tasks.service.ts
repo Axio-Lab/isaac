@@ -1,0 +1,306 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "@/common/prisma.service";
+
+export interface HumanTaskCreateInput {
+  name: string;
+  description?: string;
+  evidenceType?: string;
+  recurrenceType?: string;
+  recurrenceInterval?: number;
+  scheduledTimes?: string[];
+  timezone?: string;
+  acceptanceRules?: string[];
+  sampleEvidenceUrl?: string;
+  scoringEnabled?: boolean;
+  passingScore?: number;
+  graceMinutes?: number;
+  resubmissionAllowed?: boolean;
+  reportTime?: string;
+  reportChannelId?: string;
+  deliveryConfig?: Record<string, unknown>;
+  status?: string;
+}
+
+export type HumanTaskUpdateInput = Partial<HumanTaskCreateInput> & {
+  status?: string;
+};
+
+@Injectable()
+export class TasksService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async listTasks(userId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const [tasks, total] = await Promise.all([
+      (this.prisma as any).humanTask.findMany({
+        where: { userId },
+        include: {
+          taskChannel: { select: { id: true, platform: true, label: true } },
+          _count: {
+            select: {
+              workers: true,
+              submissions: {
+                where: {
+                  status: {
+                    in: [
+                      "SUBMITTED",
+                      "VETTED",
+                      "APPROVED",
+                      "REJECTED",
+                      "RESUBMITTED",
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      (this.prisma as any).humanTask.count({ where: { userId } }),
+    ]);
+
+    return { tasks, total, page, limit };
+  }
+
+  async getTask(userId: string, taskId: string) {
+    const task = await (this.prisma as any).humanTask.findFirst({
+      where: { id: taskId, userId },
+      include: {
+        taskChannel: { select: { id: true, platform: true, label: true } },
+        _count: {
+          select: {
+            workers: true,
+            submissions: true,
+            reports: true,
+          },
+        },
+      },
+    });
+
+    if (!task) throw new NotFoundException("Task not found");
+    return task;
+  }
+
+  async createTask(userId: string, data: HumanTaskCreateInput) {
+    const isDraft = data.status === "DRAFT";
+
+    if (!isDraft) {
+      this.validatePayload(data, "create");
+    } else if (!data.name || !String(data.name).trim()) {
+      throw new BadRequestException("Task name is required even for drafts");
+    }
+
+    const taskName = String(data.name).trim();
+    const nameTaken = await (this.prisma as any).humanTask.findFirst({
+      where: { userId, name: taskName, status: { not: "ARCHIVED" } },
+    });
+    if (nameTaken) {
+      throw new BadRequestException(
+        "A task with this name already exists. Choose a unique name.",
+      );
+    }
+
+    const channelId =
+      data.reportChannelId?.trim() || null;
+
+    return (this.prisma as any).humanTask.create({
+      data: {
+        userId,
+        name: taskName,
+        description: data.description ?? null,
+        evidenceType: data.evidenceType ?? "PHOTO",
+        recurrenceType: data.recurrenceType ?? "DAILY",
+        recurrenceInterval: data.recurrenceInterval ?? null,
+        scheduledTimes: data.scheduledTimes ?? [],
+        timezone: data.timezone ?? "UTC",
+        acceptanceRules: data.acceptanceRules ?? [],
+        sampleEvidenceUrl: data.sampleEvidenceUrl ?? null,
+        scoringEnabled: data.scoringEnabled ?? true,
+        passingScore: data.passingScore ?? 70,
+        graceMinutes: data.graceMinutes ?? 15,
+        resubmissionAllowed: data.resubmissionAllowed ?? true,
+        reportTime: data.reportTime ?? "18:00",
+        taskChannelId: channelId,
+        deliveryConfig: data.deliveryConfig ?? null,
+        status: isDraft ? "DRAFT" : "ACTIVE",
+      },
+    });
+  }
+
+  async updateTask(
+    userId: string,
+    taskId: string,
+    data: HumanTaskUpdateInput,
+  ) {
+    if (Object.keys(data).length > 0) {
+      this.validatePayload(data, "update");
+    }
+
+    const raw = data as Record<string, unknown>;
+    const {
+      reportChannelId,
+      taskChannelId: incomingTaskChannelId,
+      ...rest
+    } = raw;
+
+    const prismaData: Record<string, unknown> = { ...rest };
+
+    if (reportChannelId !== undefined || incomingTaskChannelId !== undefined) {
+      const channelId =
+        incomingTaskChannelId !== undefined
+          ? incomingTaskChannelId
+          : reportChannelId;
+      const trimmed =
+        channelId != null && String(channelId).trim()
+          ? String(channelId).trim()
+          : null;
+      prismaData.taskChannelId = trimmed;
+      prismaData.reportChannelId = null;
+    }
+
+    if (prismaData.name !== undefined && typeof prismaData.name === "string") {
+      const nextName = String(prismaData.name).trim();
+      prismaData.name = nextName;
+      const taken = await (this.prisma as any).humanTask.findFirst({
+        where: {
+          userId,
+          name: nextName,
+          NOT: { id: taskId },
+          status: { not: "ARCHIVED" },
+        },
+      });
+      if (taken) {
+        throw new BadRequestException(
+          "A task with this name already exists. Choose a unique name.",
+        );
+      }
+    }
+
+    const result = await (this.prisma as any).humanTask.updateMany({
+      where: { id: taskId, userId },
+      data: prismaData,
+    });
+
+    if (result.count === 0) throw new NotFoundException("Task not found");
+    return result;
+  }
+
+  async deleteTask(userId: string, taskId: string) {
+    const result = await (this.prisma as any).humanTask.updateMany({
+      where: { id: taskId, userId },
+      data: { status: "ARCHIVED" },
+    });
+    if (result.count === 0) throw new NotFoundException("Task not found");
+    return result;
+  }
+
+  async pauseTask(userId: string, taskId: string) {
+    const result = await (this.prisma as any).humanTask.updateMany({
+      where: { id: taskId, userId },
+      data: { status: "PAUSED" },
+    });
+    if (result.count === 0) throw new NotFoundException("Task not found");
+    return result;
+  }
+
+  async resumeTask(userId: string, taskId: string) {
+    const result = await (this.prisma as any).humanTask.updateMany({
+      where: { id: taskId, userId },
+      data: { status: "ACTIVE" },
+    });
+    if (result.count === 0) throw new NotFoundException("Task not found");
+    return result;
+  }
+
+  private validatePayload(
+    data: Partial<HumanTaskCreateInput>,
+    mode: "create" | "update",
+  ) {
+    if (mode === "create") {
+      if (!data.name || !String(data.name).trim()) {
+        throw new BadRequestException("Task name is required");
+      }
+      const rules = Array.isArray(data.acceptanceRules)
+        ? data.acceptanceRules.map((r) => String(r).trim()).filter(Boolean)
+        : [];
+      if (rules.length === 0) {
+        throw new BadRequestException(
+          "At least one acceptance rule is required",
+        );
+      }
+      if (!data.reportChannelId || !String(data.reportChannelId).trim()) {
+        throw new BadRequestException(
+          "Notification channel is required for worker messages and reminders",
+        );
+      }
+      const recurrence = data.recurrenceType ?? "DAILY";
+      const times = Array.isArray(data.scheduledTimes)
+        ? data.scheduledTimes
+        : [];
+      if (recurrence === "DAILY" || recurrence === "WEEKLY") {
+        if (times.length === 0 || !times.some((t) => String(t).trim())) {
+          throw new BadRequestException(
+            "At least one scheduled time is required for daily or weekly tasks",
+          );
+        }
+      }
+      if (recurrence === "INTERVAL") {
+        const iv = data.recurrenceInterval ?? 60;
+        if (!iv || iv < 1) {
+          throw new BadRequestException("Interval must be at least 1 minute");
+        }
+      }
+    } else {
+      if ("acceptanceRules" in data && data.acceptanceRules !== undefined) {
+        const rules = Array.isArray(data.acceptanceRules)
+          ? data.acceptanceRules.map((r) => String(r).trim()).filter(Boolean)
+          : [];
+        if (rules.length === 0) {
+          throw new BadRequestException(
+            "At least one acceptance rule is required",
+          );
+        }
+      }
+      if ("reportChannelId" in data && data.reportChannelId !== undefined) {
+        if (!data.reportChannelId || !String(data.reportChannelId).trim()) {
+          throw new BadRequestException(
+            "Notification channel is required for worker messages and reminders",
+          );
+        }
+      }
+      if (
+        data.recurrenceType === "DAILY" ||
+        data.recurrenceType === "WEEKLY"
+      ) {
+        if (data.scheduledTimes !== undefined) {
+          const times = Array.isArray(data.scheduledTimes)
+            ? data.scheduledTimes
+            : [];
+          if (times.length === 0 || !times.some((t) => String(t).trim())) {
+            throw new BadRequestException(
+              "At least one scheduled time is required for daily or weekly tasks",
+            );
+          }
+        }
+      }
+      if (
+        data.recurrenceType === "INTERVAL" &&
+        data.recurrenceInterval !== undefined
+      ) {
+        if (!data.recurrenceInterval || data.recurrenceInterval < 1) {
+          throw new BadRequestException(
+            "Interval must be at least 1 minute",
+          );
+        }
+      }
+    }
+  }
+}

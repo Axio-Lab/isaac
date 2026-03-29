@@ -1,0 +1,53 @@
+{
+  "name": "@isaac/backend",
+  "version": "1.0.0",
+  "description": "Isaac AI Micromanager - Backend API",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "npm run db:generate && nest build",
+    "start": "node dist/main.js",
+    "start:prod": "npm run db:migrate:deploy && npm run start",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.2",
+    "@composio/core": "^0.6.4",
+    "@hapi/boom": "^10.0.1",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/schedule": "^5.0.0",
+    "@prisma/client": "^6.17.1",
+    "@prisma/extension-accelerate": "^3.0.1",
+    "baileys": "^7.0.0-rc.9",
+    "cron": "^4.3.0",
+    "multer": "^1.4.5-lts.2",
+    "node-cron": "^3.0.3",
+    "pino": "^9.14.0",
+    "qrcode": "^1.5.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/qrcode": "^1.5.6",
+    "prisma": "^6.17.1",
+    "source-map-support": "^0.5.21",
+    "ts-loader": "^9.5.0",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.0"
+  }
+}
