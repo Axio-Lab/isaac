@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { AppPagination } from "@/components/ui/pagination";
 import { useHumanTasks, useTaskSubmissions } from "@/hooks/useHumanTasks";
 import type { TaskSubmission } from "@/hooks/useHumanTasks";
 import { Loader2, Radio } from "lucide-react";
 import { SubmissionDetailDialog } from "./submission-detail-dialog";
 import { submissionStatusColor } from "./submission-status";
+
+const LIVEBOARD_PAGE_SIZE = 15;
 
 export function LiveboardView() {
   const { data: tasksData, isLoading: tasksLoading } = useHumanTasks();
@@ -14,6 +17,7 @@ export function LiveboardView() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedSubmission, setSelectedSubmission] = useState<TaskSubmission | null>(null);
+  const [submissionPage, setSubmissionPage] = useState(1);
 
   const { data: submissionsData, isLoading: subsLoading } = useTaskSubmissions(selectedTaskId, {
     status: statusFilter || undefined,
@@ -23,6 +27,23 @@ export function LiveboardView() {
 
   const tasks = tasksData?.tasks ?? [];
   const submissions = submissionsData?.submissions ?? [];
+
+  const submissionTotalPages = Math.max(1, Math.ceil(submissions.length / LIVEBOARD_PAGE_SIZE));
+
+  const paginatedSubmissions = useMemo(() => {
+    const start = (submissionPage - 1) * LIVEBOARD_PAGE_SIZE;
+    return submissions.slice(start, start + LIVEBOARD_PAGE_SIZE);
+  }, [submissions, submissionPage]);
+
+  useEffect(() => {
+    setSubmissionPage(1);
+  }, [selectedTaskId, statusFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (submissionPage > submissionTotalPages) {
+      setSubmissionPage(submissionTotalPages);
+    }
+  }, [submissionPage, submissionTotalPages]);
 
   if (tasksLoading) {
     return (
@@ -106,8 +127,9 @@ export function LiveboardView() {
           <p className="text-xs text-muted-foreground">No submissions found.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          {submissions.map((sub) => (
+        <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {paginatedSubmissions.map((sub) => (
             <button
               key={sub.id}
               type="button"
@@ -129,20 +151,31 @@ export function LiveboardView() {
                 </p>
               )}
               {sub.aiScore != null && (
-                <p className="text-[10px] mt-1.5">
-                  Score:{" "}
+                <p className="text-[10px] mt-1.5 text-muted-foreground">
+                  Isaac scored this submission{" "}
                   <span className={sub.aiScore >= 70 ? "text-success font-medium" : "text-destructive font-medium"}>
-                    {sub.aiScore}
+                    {sub.aiScore}%
                   </span>
                 </p>
               )}
-              {sub.imageUrl && (
+              {(sub.items?.length ?? 0) > 0 ? (
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  Items: {sub.items!.filter((it) => it.receivedAt != null).length}/{sub.items!.length} received
+                </p>
+              ) : sub.imageUrl ? (
                 <div className="mt-2.5 h-16 bg-muted rounded-lg overflow-hidden">
                   <img src={sub.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
                 </div>
-              )}
+              ) : null}
             </button>
           ))}
+          </div>
+          <AppPagination
+            page={submissionPage}
+            totalPages={submissionTotalPages}
+            onPageChange={setSubmissionPage}
+            className="mt-4"
+          />
         </div>
       )}
 

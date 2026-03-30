@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { AppPagination } from "@/components/ui/pagination";
 import {
   useHumanTasks,
   useTaskReports,
   useGenerateReport,
+  useResendReport,
   useDeleteReport,
 } from "@/hooks/useHumanTasks";
 import type { TaskComplianceReport } from "@/hooks/useHumanTasks";
@@ -16,29 +18,48 @@ import {
   Trash2,
   Eye,
   RefreshCw,
+  Send,
 } from "lucide-react";
 import { GlassButton } from "@/components/ui/glass-button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ReportDetailDialog } from "./report-detail-dialog";
+
+const REPORTS_PAGE_SIZE = 10;
 
 export function ReportsView() {
   const { data: tasksData, isLoading: tasksLoading } = useHumanTasks();
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const { data: reportsData, isLoading: reportsLoading } = useTaskReports(selectedTaskId);
   const generateReport = useGenerateReport();
+  const resendReport = useResendReport();
   const deleteReport = useDeleteReport();
   const [selectedReport, setSelectedReport] = useState<TaskComplianceReport | null>(null);
+  const [reportPendingDelete, setReportPendingDelete] = useState<TaskComplianceReport | null>(null);
+  const [reportPage, setReportPage] = useState(1);
 
   const tasks = tasksData?.tasks ?? [];
   const reports = reportsData?.reports ?? [];
 
+  const reportTotalPages = Math.max(1, Math.ceil(reports.length / REPORTS_PAGE_SIZE));
+
+  const paginatedReports = useMemo(() => {
+    const start = (reportPage - 1) * REPORTS_PAGE_SIZE;
+    return reports.slice(start, start + REPORTS_PAGE_SIZE);
+  }, [reports, reportPage]);
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [selectedTaskId]);
+
+  useEffect(() => {
+    if (reportPage > reportTotalPages) {
+      setReportPage(reportTotalPages);
+    }
+  }, [reportPage, reportTotalPages]);
+
   async function handleGenerate() {
     if (!selectedTaskId) return;
     await generateReport.mutateAsync({ taskId: selectedTaskId });
-  }
-
-  async function handleDelete(report: TaskComplianceReport) {
-    if (!confirm("Delete this report?")) return;
-    await deleteReport.mutateAsync({ taskId: selectedTaskId, reportId: report.id });
   }
 
   if (tasksLoading) {
@@ -107,17 +128,29 @@ export function ReportsView() {
         </div>
       ) : (
         <div className="space-y-2">
-          {reports.map((report) => (
+          {paginatedReports.map((report) => {
+            const isResendingThis =
+              resendReport.isPending && resendReport.variables?.reportId === report.id;
+            return (
             <div
               key={report.id}
               className="border border-border rounded-xl p-4 bg-card hover:border-border/80 transition-all duration-150"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground mb-1.5">
-                    {new Date(report.periodStart).toLocaleDateString()} &mdash;{" "}
-                    {new Date(report.periodEnd).toLocaleDateString()}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
+                    <p className="text-xs font-medium text-foreground">
+                      {new Date(report.periodStart).toLocaleDateString()} &mdash;{" "}
+                      {new Date(report.periodEnd).toLocaleDateString()}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">
+                      Generated{" "}
+                      {new Date(report.createdAt).toLocaleString(undefined, {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
                   <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
                     <span>
                       Submissions:{" "}
@@ -147,9 +180,19 @@ export function ReportsView() {
                   </div>
                 </div>
 
+                <div className="flex items-center gap-1 shrink-0">
+                  {isResendingThis && (
+                    <Loader2
+                      className="h-4 w-4 animate-spin text-muted-foreground"
+                      aria-label="Resending report"
+                    />
+                  )}
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger asChild>
-                    <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors"
+                    >
                       <MoreVertical className="h-3.5 w-3.5" />
                     </button>
                   </DropdownMenu.Trigger>
@@ -166,19 +209,69 @@ export function ReportsView() {
                         <Eye className="h-3 w-3" /> View
                       </DropdownMenu.Item>
                       <DropdownMenu.Item
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted"
+                        onSelect={() =>
+                          resendReport.mutate({
+                            taskId: selectedTaskId,
+                            reportId: report.id,
+                          })
+                        }
+                        disabled={isResendingThis}
+                      >
+                        {isResendingThis ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Send className="h-3 w-3" />
+                        )}{" "}
+                        Resend
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
                         className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted text-destructive"
-                        onSelect={() => handleDelete(report)}
+                        onSelect={() => setReportPendingDelete(report)}
                       >
                         <Trash2 className="h-3 w-3" /> Delete
                       </DropdownMenu.Item>
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>
                 </DropdownMenu.Root>
+                </div>
               </div>
             </div>
-          ))}
+            );
+          })}
+          <AppPagination
+            page={reportPage}
+            totalPages={reportTotalPages}
+            onPageChange={setReportPage}
+            className="pt-2"
+          />
         </div>
       )}
+
+      <ConfirmDialog
+        open={reportPendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setReportPendingDelete(null);
+        }}
+        title="Delete report?"
+        description={
+          reportPendingDelete
+            ? `Remove this report for ${new Date(reportPendingDelete.periodStart).toLocaleDateString()} — ${new Date(reportPendingDelete.periodEnd).toLocaleDateString()}? This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={async () => {
+          if (!reportPendingDelete || !selectedTaskId) return;
+          const id = reportPendingDelete.id;
+          await deleteReport.mutateAsync({
+            taskId: selectedTaskId,
+            reportId: id,
+          });
+          if (selectedReport?.id === id) setSelectedReport(null);
+        }}
+      />
 
       <ReportDetailDialog report={selectedReport} onClose={() => setSelectedReport(null)} />
     </div>

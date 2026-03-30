@@ -110,6 +110,7 @@ enum TaskEvidenceType {
 
 enum SubmissionStatus {
   PENDING
+  COLLECTING
   SUBMITTED
   VETTED
   APPROVED
@@ -151,6 +152,7 @@ model HumanTask {
   timezone            String           @default("UTC")
   acceptanceRules     Json             @default("[]")
   sampleEvidenceUrl   String?
+  requiredItems       Json             @default("[]")
   scoringEnabled      Boolean          @default(true)
   passingScore        Int              @default(70)
   graceMinutes        Int              @default(15)
@@ -256,12 +258,29 @@ model TaskSubmission {
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
 
+  items SubmissionItem[]
+
   @@index([humanTaskId])
   @@index([workerId])
   @@index([status])
   @@index([dueAt])
   @@index([status, dueAt])
   @@map("task_submissions")
+}
+
+model SubmissionItem {
+  id           String          @id @default(cuid())
+  submissionId String
+  submission   TaskSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  label        String
+  sortOrder    Int             @default(0)
+  imageUrl     String?
+  rawMessage   String?
+  receivedAt   DateTime?
+  createdAt    DateTime        @default(now())
+
+  @@index([submissionId])
+  @@map("submission_items")
 }
 
 model TaskComplianceReport {

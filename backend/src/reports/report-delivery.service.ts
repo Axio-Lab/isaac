@@ -17,6 +17,7 @@ export interface DeliveryConfig {
   discordChannelId?: string;
   telegramChatId?: string;
   whatsappNumber?: string;
+  emailSubject?: string;
 }
 
 @Injectable()
@@ -33,8 +34,9 @@ export class ReportDeliveryService {
     title: string;
     content: string;
     documentType?: "google_doc" | "notion";
+    folderId?: string;
   }): Promise<string | null> {
-    const { userId, title, content, documentType = "google_doc" } = config;
+    const { userId, title, content, documentType = "google_doc", folderId } = config;
 
     if (!this.composioService.isConfigured()) {
       this.logger.warn("Composio not configured, skipping document creation");
@@ -43,19 +45,31 @@ export class ReportDeliveryService {
 
     try {
       if (documentType === "google_doc") {
+        const params: Record<string, unknown> = {
+          title,
+          markdown_text: content,
+        };
+        if (folderId) params.folder_id = folderId;
+
         const result: any = await this.composioService.executeComposioAction(
           userId,
-          "GOOGLEDOCS_CREATE_DOCUMENT",
-          { title, body: content },
+          "GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN",
+          params,
         );
         return result?.data?.documentUrl ?? result?.data?.url ?? null;
       }
 
       if (documentType === "notion") {
+        const params: Record<string, unknown> = {
+          title,
+          markdown: content,
+        };
+        if (folderId) params.parent_id = folderId;
+
         const result: any = await this.composioService.executeComposioAction(
           userId,
-          "NOTION_CREATE_PAGE",
-          { title, content },
+          "NOTION_CREATE_NOTION_PAGE",
+          params,
         );
         return result?.data?.url ?? null;
       }
@@ -73,6 +87,7 @@ export class ReportDeliveryService {
     documentUrl: string | null,
     userId: string,
     deliveryConfig?: Partial<DeliveryConfig>,
+    emailSubject?: string,
   ): Promise<Record<ReportDestination, boolean>> {
     const results = {} as Record<ReportDestination, boolean>;
     const message = documentUrl
@@ -86,6 +101,7 @@ export class ReportDeliveryService {
           message,
           userId,
           deliveryConfig,
+          emailSubject,
         );
       } catch (error) {
         this.logger.error(`Failed to deliver to ${destination}`, error);
@@ -101,6 +117,7 @@ export class ReportDeliveryService {
     message: string,
     userId: string,
     config?: Partial<DeliveryConfig>,
+    emailSubject?: string,
   ): Promise<boolean> {
     if (!this.composioService.isConfigured()) return false;
 
@@ -138,7 +155,7 @@ export class ReportDeliveryService {
           "GMAIL_SEND_EMAIL",
           {
             to: config?.recipientEmail,
-            subject: "Task Compliance Report",
+            subject: emailSubject || config?.emailSubject || "Task Compliance Report",
             body: message,
           },
         );

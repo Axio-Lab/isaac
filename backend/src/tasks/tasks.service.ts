@@ -20,6 +20,7 @@ export interface HumanTaskCreateInput {
   scheduledTimes?: string[];
   timezone?: string;
   acceptanceRules?: string[];
+  requiredItems?: Array<{ label: string; evidenceType: string; referenceUrl?: string }>;
   sampleEvidenceUrl?: string;
   scoringEnabled?: boolean;
   passingScore?: number;
@@ -124,6 +125,7 @@ export class TasksService {
         scheduledTimes: data.scheduledTimes ?? [],
         timezone: data.timezone ?? "UTC",
         acceptanceRules: data.acceptanceRules ?? [],
+        requiredItems: data.requiredItems ?? [],
         sampleEvidenceUrl: data.sampleEvidenceUrl ?? null,
         scoringEnabled: data.scoringEnabled ?? true,
         passingScore: data.passingScore ?? 70,

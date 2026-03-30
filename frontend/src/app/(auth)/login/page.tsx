@@ -88,7 +88,13 @@ function LoginForm() {
       <div className="w-full max-w-sm border border-border rounded-xl p-5 bg-card">
         <div className="text-center mb-5">
           <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center mx-auto mb-3">
-            <svg className="h-4 w-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 14.5M14.25 3.104c.251.023.501.05.75.082M19.8 14.5a2.25 2.25 0 010 3.182L16 21.5M5 14.5a2.25 2.25 0 000 3.182L8.8 21.5" /></svg>
+            <img
+              src="/images/isaac-mark.svg"
+              alt=""
+              className="h-4 w-4"
+              width={16}
+              height={16}
+            />
           </div>
           <h1 className="text-lg font-semibold text-foreground tracking-tight">Isaac</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Sign in to your account</p>

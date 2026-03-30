@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { msgVettingFeedback } from "@/channels/bot-messages";
+import { getTaskInstructions } from "@/agent/isaac-system-prompt";
 
-function getPublicImageUrl(imageUrl: string): string {
-  const base = (process.env.API_URL || "").replace(/\/$/, "");
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://"))
-    return imageUrl;
-  const clean = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
-  return base ? `${base}${clean}` : clean;
+async function downloadImageAsBase64(
+  url: string,
+): Promise<{ base64: string; mediaType: string } | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/jpeg";
+    const mediaType = contentType.split(";")[0].trim();
+    const buf = Buffer.from(await res.arrayBuffer());
+    return { base64: buf.toString("base64"), mediaType };
+  } catch {
+    return null;
+  }
 }
 
 function parseVettingJson(text: string): {
@@ -42,21 +50,21 @@ function parseVettingJson(text: string): {
 
 @Injectable()
 export class TaskVettingService {
+  private readonly logger = new Logger(TaskVettingService.name);
+
   private generateText: ((opts: {
     systemPrompt: string;
     userPrompt: string;
+    images?: Array<{ base64: string; mediaType: string }>;
   }) => Promise<{ text: string }>) | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Allows the AgentModule or app bootstrap to inject the AI text generation
-   * function without creating a hard circular dependency.
-   */
   setGenerateText(
     fn: (opts: {
       systemPrompt: string;
       userPrompt: string;
+      images?: Array<{ base64: string; mediaType: string }>;
     }) => Promise<{ text: string }>,
   ) {
     this.generateText = fn;
@@ -73,6 +81,7 @@ export class TaskVettingService {
       where: { id: submissionId },
       include: {
         humanTask: { include: { user: { select: { id: true } } } },
+        items: { orderBy: { sortOrder: "asc" } },
       },
     });
     if (!submission) throw new NotFoundException("Submission not found");
@@ -90,33 +99,24 @@ export class TaskVettingService {
         ? rules.map((r: string, i: number) => `${i + 1}. ${r}`).join("\n")
         : "No specific rules defined. Evaluate general quality and completeness.";
 
-    const sampleUrl = submission.humanTask.sampleEvidenceUrl;
+    const systemPrompt = getTaskInstructions("vetting");
+    const images: Array<{ base64: string; mediaType: string }> = [];
+    const submissionItems: any[] = submission.items ?? [];
 
-    const systemPrompt =
-      "You are a strict quality inspector for task compliance. " +
-      "Evaluate submitted evidence against the provided acceptance rules. " +
-      "Always respond with ONLY valid JSON in this exact format: " +
-      '{ "score": 0-100, "passed": true/false, "findings": ["finding1", "finding2"], "summary": "brief summary" }. ' +
-      "Do not include any text before or after the JSON.";
+    let userPrompt: string;
 
-    let userPrompt = `Evaluate this evidence against these acceptance rules:\n\n${rulesText}\n\n`;
+    if (submissionItems.length > 0) {
+      userPrompt = await this.buildMultiItemPrompt(submission, submissionItems, rulesText, images);
+    } else {
+      userPrompt = await this.buildSingleItemPrompt(submission, rulesText, images);
+    }
 
-    if (sampleUrl) {
-      userPrompt += `REFERENCE/EXPECTED EVIDENCE: ${sampleUrl}\nCompare against this reference carefully.\n\n`;
-    }
-    if (submission.imageUrl) {
-      const publicUrl = getPublicImageUrl(submission.imageUrl);
-      userPrompt += `SUBMITTED IMAGE: ${publicUrl}\n`;
-      userPrompt += `Analyze the image content. Does it meet the acceptance rules?\n`;
-    }
-    if (submission.rawMessage) {
-      userPrompt += `Worker's message: "${submission.rawMessage}"\n`;
-    }
     userPrompt += "\nRespond with ONLY the JSON evaluation object, no other text.";
 
     const { text: agentText } = await this.generateText({
       systemPrompt,
       userPrompt,
+      images: images.length > 0 ? images : undefined,
     });
 
     let result = parseVettingJson(agentText);
@@ -152,6 +152,90 @@ export class TaskVettingService {
       result.findings,
       result.summary,
       !passed && !!submission.humanTask.resubmissionAllowed,
+      !passed ? rules : undefined,
     );
+  }
+
+  private async buildSingleItemPrompt(
+    submission: any,
+    rulesText: string,
+    images: Array<{ base64: string; mediaType: string }>,
+  ): Promise<string> {
+    let userPrompt = `Evaluate this evidence against these acceptance rules:\n\n${rulesText}\n\n`;
+
+    const sampleUrl = submission.humanTask.sampleEvidenceUrl;
+    if (sampleUrl) {
+      const sampleImg = await downloadImageAsBase64(sampleUrl);
+      if (sampleImg) {
+        images.push(sampleImg);
+        userPrompt += `The first image is the REFERENCE/EXPECTED evidence. Compare the submission against it carefully.\n\n`;
+      } else {
+        userPrompt += `REFERENCE/EXPECTED EVIDENCE (could not load image): ${sampleUrl}\n\n`;
+      }
+    }
+
+    if (submission.imageUrl) {
+      const submittedImg = await downloadImageAsBase64(submission.imageUrl);
+      if (submittedImg) {
+        images.push(submittedImg);
+        userPrompt += `${sampleUrl ? "The next image is the" : "The image is the"} SUBMITTED evidence. Analyze it against the acceptance rules.\n`;
+      } else {
+        this.logger.warn(`Could not download submission image: ${submission.imageUrl}`);
+        userPrompt += `SUBMITTED IMAGE: Worker sent an image but it could not be downloaded for analysis.\n`;
+        userPrompt += `Since the image is inaccessible, evaluate based on any text message provided. If no text, note that evidence could not be verified.\n`;
+      }
+    }
+
+    if (submission.rawMessage) {
+      userPrompt += `Worker's message: "${submission.rawMessage}"\n`;
+    }
+
+    return userPrompt;
+  }
+
+  private async buildMultiItemPrompt(
+    submission: any,
+    items: any[],
+    rulesText: string,
+    images: Array<{ base64: string; mediaType: string }>,
+  ): Promise<string> {
+    const requiredItems: Array<{ label: string; evidenceType: string; referenceUrl?: string }> =
+      Array.isArray(submission.humanTask.requiredItems) ? submission.humanTask.requiredItems : [];
+
+    let userPrompt =
+      `This submission contains ${items.length} required evidence items. ` +
+      `Evaluate ALL items together against these acceptance rules:\n\n${rulesText}\n\n` +
+      `Items submitted:\n`;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const reqItem = requiredItems[i];
+      const label = item.label || `Item ${i + 1}`;
+      userPrompt += `\n--- ${label} ---\n`;
+
+      if (reqItem?.referenceUrl) {
+        const refImg = await downloadImageAsBase64(reqItem.referenceUrl);
+        if (refImg) {
+          images.push(refImg);
+          userPrompt += `[REFERENCE image for ${label} attached]\n`;
+        }
+      }
+
+      if (item.imageUrl) {
+        const img = await downloadImageAsBase64(item.imageUrl);
+        if (img) {
+          images.push(img);
+          userPrompt += `[SUBMITTED image for ${label} attached]\n`;
+        } else {
+          userPrompt += `[SUBMITTED image for ${label} could not be downloaded]\n`;
+        }
+      }
+
+      if (item.rawMessage) {
+        userPrompt += `Worker's note for ${label}: "${item.rawMessage}"\n`;
+      }
+    }
+
+    return userPrompt;
   }
 }

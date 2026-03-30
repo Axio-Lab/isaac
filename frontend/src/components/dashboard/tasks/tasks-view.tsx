@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { AppPagination } from "@/components/ui/pagination";
 import {
   useHumanTasks,
   useCreateHumanTask,
@@ -35,9 +36,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TaskCard } from "./task-card";
 import { AutomatedTaskCard } from "./automated-task-card";
 import { TaskFormDialog } from "./task-form-dialog";
+import { TaskSelectDropdown, type TaskSelectOption } from "./task-select-dropdown";
 import { WorkersDialog } from "./workers-dialog";
 import {
   defaultForm,
+  CHAT_NOTIFICATION_PLATFORMS,
   emptyDestination,
   getBrowserTimezone,
   DRAFT_STORAGE_KEY,
@@ -46,6 +49,38 @@ import {
 } from "./constants";
 
 type AnyTask = (HumanTask & { _taskType: "HUMAN" }) | (AutomatedTask & { _taskType: "AUTOMATED" });
+
+const TASKS_PAGE_SIZE = 10;
+
+const TASK_STATUSES = ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
+
+const CHANNEL_FILTER_OPTIONS = CHAT_NOTIFICATION_PLATFORMS;
+
+/** Slack / Telegram / etc. for human tasks from taskChannel; for automated from first destination type. */
+function getTaskPlatform(t: AnyTask): string | null {
+  if (t._taskType === "HUMAN") {
+    const p = t.taskChannel?.platform;
+    return p ? String(p).toLowerCase() : null;
+  }
+  const dc = (t.deliveryConfig ?? {}) as Record<string, unknown>;
+  const raw = dc.destinations as Array<{ type?: string }> | undefined;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const ty = raw[0]?.type;
+  return ty ? String(ty).toLowerCase() : null;
+}
+
+const CHANNEL_NONE = "__none__";
+
+const STATUS_FILTER_OPTIONS: TaskSelectOption[] = [
+  { value: "", label: "All statuses" },
+  ...TASK_STATUSES.map((s) => ({ value: s, label: s })),
+];
+
+const CHANNEL_FILTER_SELECT_OPTIONS: TaskSelectOption[] = [
+  { value: "", label: "All channels" },
+  { value: CHANNEL_NONE, label: "No channel" },
+  ...CHANNEL_FILTER_OPTIONS.map((d) => ({ value: d.value, label: d.label })),
+];
 
 export function TasksView() {
   const { data, isLoading } = useHumanTasks();
@@ -91,6 +126,9 @@ export function TasksView() {
   const [taskPendingAction, setTaskPendingAction] =
     useState<TaskPendingAction | null>(null);
   const [taskSearch, setTaskSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("");
+  const [taskListPage, setTaskListPage] = useState(1);
 
   const humanTasks = data?.tasks ?? [];
   const automatedTasks = autoData?.tasks ?? [];
@@ -105,19 +143,45 @@ export function TasksView() {
 
   const filteredTasks = useMemo(() => {
     const q = taskSearch.trim().toLowerCase();
-    if (!q) return allTasks;
     return allTasks.filter((t) => {
+      if (statusFilter && t.status !== statusFilter) return false;
+
+      if (platformFilter) {
+        const plat = getTaskPlatform(t);
+        if (platformFilter === CHANNEL_NONE) {
+          if (plat) return false;
+        } else if (plat !== platformFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      if (!q) return true;
       const name = (t.name ?? "").toLowerCase();
       const desc = (t.description ?? "").toLowerCase();
       if (t._taskType === "AUTOMATED") {
         const prompt = (t.prompt ?? "").toLowerCase();
-        return (
-          name.includes(q) || desc.includes(q) || prompt.includes(q)
-        );
+        return name.includes(q) || desc.includes(q) || prompt.includes(q);
       }
       return name.includes(q) || desc.includes(q);
     });
-  }, [allTasks, taskSearch]);
+  }, [allTasks, taskSearch, statusFilter, platformFilter]);
+
+  const taskTotalPages = Math.max(1, Math.ceil(filteredTasks.length / TASKS_PAGE_SIZE));
+
+  const paginatedTasks = useMemo(() => {
+    const start = (taskListPage - 1) * TASKS_PAGE_SIZE;
+    return filteredTasks.slice(start, start + TASKS_PAGE_SIZE);
+  }, [filteredTasks, taskListPage]);
+
+  useEffect(() => {
+    setTaskListPage(1);
+  }, [taskSearch, statusFilter, platformFilter]);
+
+  useEffect(() => {
+    if (taskListPage > taskTotalPages) {
+      setTaskListPage(taskTotalPages);
+    }
+  }, [taskListPage, taskTotalPages]);
 
   useEffect(() => {
     try {
@@ -183,6 +247,7 @@ export function TasksView() {
       taskChannelId: task.taskChannelId || "",
       acceptanceRules:
         task.acceptanceRules?.length > 0 ? [...task.acceptanceRules] : [""],
+      requiredItems: Array.isArray((task as any).requiredItems) ? (task as any).requiredItems : [],
       scoringEnabled: task.scoringEnabled,
       passingScore: task.passingScore,
       graceMinutes: task.graceMinutes,
@@ -257,6 +322,7 @@ export function TasksView() {
         reportChannelId: form.taskChannelId || null,
         taskChannelId: form.taskChannelId || null,
         acceptanceRules,
+        requiredItems: form.requiredItems.filter((it) => it.label.trim().length > 0),
         scoringEnabled: form.scoringEnabled,
         passingScore: form.passingScore,
         graceMinutes: form.graceMinutes,
@@ -503,16 +569,36 @@ export function TasksView() {
         </GlassButton>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-        <input
-          type="search"
-          value={taskSearch}
-          onChange={(e) => setTaskSearch(e.target.value)}
-          placeholder="Search by name, description, or prompt (automated)…"
-          className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          aria-label="Search tasks"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-6">
+        <div className="flex flex-wrap items-end gap-2.5 sm:gap-3 min-w-0">
+          <TaskSelectDropdown
+            label="Status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            ariaLabel="Filter by status"
+            triggerClassName="w-[min(100%,8.5rem)] sm:w-auto"
+          />
+          <TaskSelectDropdown
+            label="Channel"
+            value={platformFilter}
+            onChange={setPlatformFilter}
+            options={CHANNEL_FILTER_SELECT_OPTIONS}
+            ariaLabel="Filter by notification channel"
+            triggerClassName="w-[min(100%,12rem)] sm:w-auto sm:min-w-[10rem]"
+          />
+        </div>
+        <div className="relative w-full sm:flex-1 sm:min-w-[12rem] sm:max-w-2xl">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <input
+            type="search"
+            value={taskSearch}
+            onChange={(e) => setTaskSearch(e.target.value)}
+            placeholder="Search by task name, description..."
+            className="w-full pl-9 pr-4 py-1.5 sm:py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            aria-label="Search tasks"
+          />
+        </div>
       </div>
 
       {hasSavedDraft && (
@@ -546,13 +632,13 @@ export function TasksView() {
           <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center mb-3">
             <Search className="h-5 w-5 text-muted-foreground" />
           </div>
-          <p className="text-xs text-muted-foreground">
-            No tasks match &ldquo;{taskSearch.trim()}&rdquo;. Try a different search.
+          <p className="text-xs text-muted-foreground max-w-sm">
+            No tasks match your search or filters. Try different keywords, status, or channel.
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredTasks.map((task) =>
+          {paginatedTasks.map((task) =>
             task._taskType === "AUTOMATED" ? (
               <AutomatedTaskCard
                 key={`auto-${task.id}`}
@@ -579,6 +665,12 @@ export function TasksView() {
               />
             ),
           )}
+          <AppPagination
+            page={taskListPage}
+            totalPages={taskTotalPages}
+            onPageChange={setTaskListPage}
+            className="pt-2"
+          />
         </div>
       )}
 

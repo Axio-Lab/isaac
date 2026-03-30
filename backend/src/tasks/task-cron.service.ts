@@ -12,7 +12,6 @@ import {
   zonedWallTimeToUtc,
 } from "@/common/lib/taskTimezone";
 import { TaskReportService } from "./task-report.service";
-import { ReportDeliveryService } from "@/reports/report-delivery.service";
 import { ChannelMessagingService } from "@/channels/channel-messaging.service";
 import { AutomatedTaskRunnerService } from "@/automated-tasks/automated-task-runner.service";
 import { msgTaskDuePrompt, msgSubmissionMissed } from "@/channels/bot-messages";
@@ -25,7 +24,6 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reportService: TaskReportService,
-    private readonly reportDelivery: ReportDeliveryService,
     private readonly channelMessaging: ChannelMessagingService,
     private readonly automatedRunner: AutomatedTaskRunnerService,
   ) {}
@@ -61,6 +59,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         timezone: true,
         graceMinutes: true,
         evidenceType: true,
+        requiredItems: true,
       },
     });
 
@@ -145,7 +144,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         });
         if (existing) continue;
 
-        await (this.prisma as any).taskSubmission.create({
+        const submission = await (this.prisma as any).taskSubmission.create({
           data: {
             humanTaskId: task.id,
             workerId: worker.id,
@@ -154,12 +153,25 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
           },
         });
 
+        const items: Array<{ label: string; evidenceType: string }> = Array.isArray(task.requiredItems)
+          ? task.requiredItems
+          : [];
+        if (items.length > 0) {
+          await (this.prisma as any).submissionItem.createMany({
+            data: items.map((it: any, idx: number) => ({
+              submissionId: submission.id,
+              label: it.label,
+              sortOrder: idx,
+            })),
+          });
+        }
+
         const evidenceLabel = (task.evidenceType || "evidence").toLowerCase();
         const dueTimeStr = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
         await this.channelMessaging
           .sendToWorker(
             worker.id,
-            msgTaskDuePrompt(worker.name, task.name, evidenceLabel, dueTimeStr, tz),
+            msgTaskDuePrompt(worker.name, task.name, evidenceLabel, dueTimeStr, tz, items.length > 0 ? items : undefined),
           )
           .catch((err) =>
             this.logger.warn(
@@ -258,7 +270,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         task.id,
         task.userId,
       );
-      await this.deliverReport(task, report);
+      await this.reportService.deliverAndRecord(report.id, task.id, task.userId);
     } catch (err: any) {
       this.logger.error(
         `Failed to generate report for task ${task.id}: ${err.message}`,
@@ -330,66 +342,4 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async deliverReport(task: any, report: any): Promise<void> {
-    const fullTask = await (this.prisma as any).humanTask.findUnique({
-      where: { id: task.id },
-    });
-    if (!fullTask) return;
-
-    const dc = (fullTask.deliveryConfig ?? {}) as Record<string, unknown>;
-    const destinations = (dc.destinations ?? []) as Array<{
-      type: string;
-      channelId: string;
-      channelName?: string;
-    }>;
-    const reportDocType = (dc.reportDocType as string) || "google_doc";
-
-    let docUrl: string | null = null;
-    try {
-      docUrl = await this.reportDelivery.createReportDocument({
-        userId: task.userId,
-        title: `Report: ${fullTask.name} — ${new Date().toISOString().split("T")[0]}`,
-        content: report.summaryMarkdown,
-        documentType: reportDocType === "notion" ? "notion" : "google_doc",
-      });
-    } catch (err: any) {
-      this.logger.warn(
-        `Document creation failed for task ${task.id}: ${err.message}`,
-      );
-    }
-
-    if (destinations.length > 0) {
-      const destTypes = destinations.map((d) => d.type as any);
-      const deliveryConfig: Record<string, string | undefined> = {};
-      for (const d of destinations) {
-        if (d.type === "telegram") deliveryConfig.telegramChatId = d.channelId;
-        if (d.type === "slack") deliveryConfig.slackChannelId = d.channelId;
-        if (d.type === "discord") deliveryConfig.discordChannelId = d.channelId;
-        if (d.type === "whatsapp") deliveryConfig.whatsappNumber = d.channelId;
-        if (d.type === "gmail") deliveryConfig.recipientEmail = d.channelId;
-      }
-
-      const summary =
-        `📋 *Daily Report: ${fullTask.name}*\n` +
-        `Total: ${report.totalSubmissions} | Missed: ${report.missedCount} | ` +
-        `Avg Score: ${report.avgScore ?? "N/A"} | Pass Rate: ${report.passRate ?? "N/A"}%`;
-
-      try {
-        const results = await this.reportDelivery.deliverToDestinations(
-          destTypes,
-          summary,
-          docUrl,
-          task.userId,
-          deliveryConfig,
-        );
-        this.logger.log(
-          `Report delivery results for task ${task.id}: ${JSON.stringify(results)}`,
-        );
-      } catch (err: any) {
-        this.logger.error(
-          `Report delivery failed for task ${task.id}: ${err.message}`,
-        );
-      }
-    }
-  }
 }

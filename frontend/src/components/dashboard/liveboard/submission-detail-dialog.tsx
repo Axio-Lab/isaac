@@ -10,7 +10,38 @@ interface SubmissionDetailDialogProps {
   onClose: () => void;
 }
 
+function parseAiFindings(raw: string | null | undefined): string[] {
+  if (raw == null || raw.trim() === "") return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.map((x) => String(x)).filter((s) => s.length > 0);
+    }
+  } catch {
+    /* not JSON */
+  }
+  return [raw.trim()];
+}
+
+function isaacFeedbackText(submission: TaskSubmission): string | null {
+  if (submission.status === "REJECTED") {
+    return "This submission did not meet the required acceptance criteria.";
+  }
+  if (submission.aiFeedback?.trim()) {
+    return submission.aiFeedback.trim();
+  }
+  if (submission.status === "APPROVED" || submission.status === "VETTED") {
+    return "This submission met the acceptance criteria.";
+  }
+  return null;
+}
+
 export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetailDialogProps) {
+  const feedback = submission ? isaacFeedbackText(submission) : null;
+  const items = submission?.items ?? [];
+  const isMultiItem = items.length > 0;
+  const receivedCount = items.filter((it) => it.receivedAt != null).length;
+
   return (
     <Dialog.Root open={!!submission} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -39,13 +70,18 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                 ...(submission.latenessSeconds && submission.latenessSeconds > 0
                   ? [["Lateness", `${Math.round(submission.latenessSeconds / 60)}m`]]
                   : []),
-                ...(submission.aiScore != null ? [["AI Score", String(submission.aiScore)]] : []),
               ].map(([label, value]) => (
-                <div key={String(label)} className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">{label}</span>
-                  <span className="text-[11px] font-medium text-foreground">{value}</span>
+                <div key={String(label)} className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground shrink-0">{label}</span>
+                  <span className="text-[11px] font-medium text-foreground text-right">{value}</span>
                 </div>
               ))}
+
+              {submission.aiScore != null && (
+                <p className="text-[11px] leading-relaxed text-foreground">
+                  Isaac scored this submission {submission.aiScore}%.
+                </p>
+              )}
 
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">Status</span>
@@ -53,31 +89,82 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                   className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium border ${submissionStatusColor(submission.status)}`}
                 >
                   {submission.status}
+                  {submission.status === "COLLECTING" && isMultiItem && ` (${receivedCount}/${items.length})`}
                 </span>
               </div>
 
-              {submission.aiFindings && (
+              {isMultiItem && (
                 <div>
-                  <span className="text-[11px] text-muted-foreground block mb-1">AI Findings</span>
-                  <p className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed">{submission.aiFindings}</p>
+                  <span className="text-[11px] text-muted-foreground block mb-1.5">
+                    Evidence items ({receivedCount}/{items.length} received)
+                  </span>
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border p-2.5">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-medium text-foreground">{item.label}</span>
+                          {item.receivedAt ? (
+                            <span className="text-[9px] text-success">
+                              {new Date(item.receivedAt).toLocaleTimeString()}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-muted-foreground italic">Pending</span>
+                          )}
+                        </div>
+                        {item.rawMessage && (
+                          <p className="text-[10px] text-muted-foreground mb-1">{item.rawMessage}</p>
+                        )}
+                        {item.imageUrl && (
+                          <img src={item.imageUrl} alt={item.label} className="rounded-md w-full max-h-32 object-cover" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {submission.aiFeedback && (
+
+              {(submission.aiFindings != null && submission.aiFindings !== "") && (
                 <div>
-                  <span className="text-[11px] text-muted-foreground block mb-1">AI Feedback</span>
-                  <p className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed">{submission.aiFeedback}</p>
+                  <span className="text-[11px] text-muted-foreground block mb-1">
+                    Findings against acceptance criteria
+                  </span>
+                  {(() => {
+                    const findings = parseAiFindings(submission.aiFindings);
+                    if (findings.length === 0) {
+                      return (
+                        <p className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed text-muted-foreground italic">
+                          No findings recorded.
+                        </p>
+                      );
+                    }
+                    return (
+                      <ul className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed list-disc list-inside space-y-1">
+                        {findings.map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
                 </div>
               )}
-              {submission.rawMessage && (
+
+              {feedback && (
+                <div>
+                  <span className="text-[11px] text-muted-foreground block mb-1">Isaac&apos;s feedback</span>
+                  <p className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed">{feedback}</p>
+                </div>
+              )}
+
+              {!isMultiItem && submission.rawMessage && (
                 <div>
                   <span className="text-[11px] text-muted-foreground block mb-1">Raw Message</span>
                   <p className="text-[11px] bg-muted p-2.5 rounded-lg whitespace-pre-wrap">{submission.rawMessage}</p>
                 </div>
               )}
-              {submission.imageUrl && (
+              {!isMultiItem && submission.imageUrl && (
                 <div>
-                  <span className="text-[11px] text-muted-foreground block mb-1">Evidence</span>
-                  <img src={submission.imageUrl} alt="Evidence" className="rounded-lg w-full" />
+                  <span className="text-[11px] text-muted-foreground block mb-1">Submitted evidence</span>
+                  <img src={submission.imageUrl} alt="Submitted evidence" className="rounded-lg w-full" />
                 </div>
               )}
             </div>

@@ -39,6 +39,7 @@ export class TaskSubmissionService {
       where,
       include: {
         worker: { select: { id: true, name: true, platform: true } },
+        items: { orderBy: { sortOrder: "asc" } },
       },
       orderBy: { dueAt: "desc" },
       take: 500,

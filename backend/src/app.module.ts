@@ -10,6 +10,7 @@ import { ComposioModule } from "./composio/composio.module";
 import { ReportsModule } from "./reports/reports.module";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { AutomatedTasksModule } from "./automated-tasks/automated-tasks.module";
+import { UploadsModule } from "./uploads/uploads.module";
 import { AgentService } from "./agent/agent.service";
 import { TaskVettingService } from "./tasks/task-vetting.service";
 import { TaskReportService } from "./tasks/task-report.service";
@@ -27,6 +28,7 @@ import { InboundMessageService } from "./channels/inbound-message.service";
     ReportsModule,
     WhatsAppModule,
     AutomatedTasksModule,
+    UploadsModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

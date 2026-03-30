@@ -19,6 +19,7 @@ export interface HumanTask {
   scheduledTimes: string[];
   timezone: string;
   acceptanceRules: string[];
+  requiredItems?: Array<{ label: string; evidenceType: string; referenceUrl?: string }>;
   sampleEvidenceUrl?: string | null;
   scoringEnabled: boolean;
   passingScore: number;
@@ -61,6 +62,17 @@ export interface HumanWorker {
   }>;
 }
 
+export interface SubmissionItem {
+  id: string;
+  submissionId: string;
+  label: string;
+  sortOrder: number;
+  imageUrl?: string | null;
+  rawMessage?: string | null;
+  receivedAt?: string | null;
+  createdAt: string;
+}
+
 export interface TaskSubmission {
   id: string;
   humanTaskId: string;
@@ -77,6 +89,7 @@ export interface TaskSubmission {
   status: string;
   vetAttempts: number;
   reportIncluded: boolean;
+  items?: SubmissionItem[];
   createdAt: string;
 }
 
@@ -377,6 +390,27 @@ export function useGenerateReport() {
       toast.success("Report generated");
     },
     onError: (e) => toast.error(e.message || "Could not generate report"),
+  });
+}
+
+export function useResendReport() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { success: boolean },
+    Error,
+    { taskId: string; reportId: string }
+  >({
+    mutationFn: ({ taskId, reportId }) =>
+      fetchJson(`/api/human-tasks/${taskId}/reports/${reportId}/resend`, {
+        method: "POST",
+      }),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ["human-tasks", taskId, "reports"],
+      });
+      toast.success("Report resent");
+    },
+    onError: (e) => toast.error(e.message || "Could not resend report"),
   });
 }
 

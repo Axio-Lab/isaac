@@ -209,13 +209,46 @@ export class AgentService {
   async generateTextWithSystemPrompt(options: {
     systemPrompt: string;
     userPrompt: string;
+    images?: Array<{ base64: string; mediaType: string }>;
     model?: string;
   }): Promise<{ text: string }> {
     const model = this.getModel(options.model);
 
+    const hasImages = options.images && options.images.length > 0;
+
+    let promptInput: string | AsyncIterable<any>;
+
+    if (hasImages) {
+      const contentBlocks: any[] = [];
+      for (const img of options.images!) {
+        contentBlocks.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType,
+            data: img.base64,
+          },
+        });
+      }
+      contentBlocks.push({ type: "text", text: options.userPrompt });
+
+      const msg = {
+        type: "user" as const,
+        message: { role: "user" as const, content: contentBlocks },
+        parent_tool_use_id: null,
+        session_id: "",
+      };
+      async function* streamPrompt() {
+        yield msg;
+      }
+      promptInput = streamPrompt();
+    } else {
+      promptInput = options.userPrompt;
+    }
+
     try {
       const result = query({
-        prompt: options.userPrompt,
+        prompt: promptInput,
         options: {
           model,
           systemPrompt: options.systemPrompt,

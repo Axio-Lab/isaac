@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -46,19 +46,10 @@ export function ConfirmDialog({
           aria-describedby={undefined}
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl shadow-2xl w-[calc(100%-2rem)] max-w-sm p-5 z-50"
         >
-          <div className={`flex items-start justify-between gap-3 ${description ? "mb-3" : "mb-5"}`}>
-            <Dialog.Title className="text-sm font-semibold text-foreground pr-6">
+          <div className={description ? "mb-3" : "mb-5"}>
+            <Dialog.Title className="text-sm font-semibold text-foreground">
               {title}
             </Dialog.Title>
-            <Dialog.Close asChild>
-              <button
-                type="button"
-                className="p-1 rounded-md hover:bg-muted text-muted-foreground shrink-0 -mr-1 -mt-0.5"
-                aria-label="Close"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </Dialog.Close>
           </div>
           {description && (
             <Dialog.Description className="text-xs text-muted-foreground mb-5 leading-relaxed">

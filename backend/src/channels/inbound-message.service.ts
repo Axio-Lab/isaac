@@ -9,6 +9,10 @@ import {
   msgSubmissionReceived,
   msgSubmissionReceivedReview,
   msgCannotSubmitTaskArchived,
+  msgHelpResponse,
+  msgItemReceived,
+  msgAllItemsReceived,
+  type TaskInfoForWorker,
 } from "./bot-messages";
 
 @Injectable()
@@ -39,8 +43,73 @@ export class InboundMessageService {
 
     const externalIds = buildExternalIdCandidates(senderExternalId, platform);
 
+    if (await this.handleHelp(channelId, externalIds, text)) return;
     if (await this.handleOnboarding(channelId, externalIds, text)) return;
     await this.handleSubmission(channelId, platform, externalIds, senderExternalId, text, imageUrl);
+  }
+
+  // ─── Help command ─────────────────────────────────────────────────
+
+  private async handleHelp(
+    channelId: string,
+    externalIds: string[],
+    text?: string,
+  ): Promise<boolean> {
+    const trimmed = (text || "").trim().toLowerCase();
+    if (trimmed !== "help") return false;
+
+    const worker = await (this.prisma as any).humanWorker.findFirst({
+      where: {
+        taskChannelId: channelId,
+        externalId: { in: externalIds },
+        status: { in: ["ONBOARDING", "ACTIVE"] },
+      },
+      include: { humanTask: true },
+    });
+    if (!worker) return false;
+
+    const task = worker.humanTask;
+    const info: TaskInfoForWorker = {
+      name: task.name,
+      description: task.description,
+      evidenceType: task.evidenceType || "PHOTO",
+      requiredItems: Array.isArray(task.requiredItems) ? task.requiredItems : [],
+      acceptanceRules: Array.isArray(task.acceptanceRules) ? task.acceptanceRules : [],
+      scheduledTimes: Array.isArray(task.scheduledTimes) ? task.scheduledTimes : [],
+      timezone: task.timezone || "UTC",
+      passingScore: task.passingScore ?? 70,
+      resubmissionAllowed: task.resubmissionAllowed ?? true,
+    };
+
+    let pendingInfo: string | undefined;
+    if (worker.status === "ACTIVE") {
+      const pending = await (this.prisma as any).taskSubmission.findFirst({
+        where: {
+          workerId: worker.id,
+          humanTaskId: worker.humanTaskId,
+          status: { in: ["PENDING", "COLLECTING"] },
+        },
+        orderBy: { dueAt: "asc" },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      });
+      if (pending) {
+        const items = pending.items ?? [];
+        const received = items.filter((it: any) => it.receivedAt != null).length;
+        if (items.length > 0 && received < items.length) {
+          pendingInfo = `You have a pending submission (${received}/${items.length} items received).`;
+        } else {
+          pendingInfo = `You have a pending submission due at ${pending.dueAt.toISOString().slice(11, 16)} UTC.`;
+        }
+      } else {
+        pendingInfo = "No pending submissions right now.";
+      }
+    }
+
+    await this.messaging.sendToWorker(
+      worker.id,
+      msgHelpResponse(worker.name, info, worker.status, pendingInfo),
+    );
+    return true;
   }
 
   // ─── Onboarding (READY flow) ────────────────────────────────────
@@ -128,9 +197,10 @@ export class InboundMessageService {
       where: {
         workerId: worker.id,
         humanTaskId: worker.humanTaskId,
-        status: { in: ["PENDING", "REJECTED"] },
+        status: { in: ["PENDING", "COLLECTING", "REJECTED"] },
       },
       orderBy: { dueAt: "asc" },
+      include: { items: { orderBy: { sortOrder: "asc" } } },
     });
 
     if (!pendingSubmission) {
@@ -151,21 +221,80 @@ export class InboundMessageService {
       return;
     }
 
-    const updateData: Record<string, unknown> = {
-      status: "SUBMITTED",
-      submittedAt: new Date(),
-    };
-    if (text) updateData.rawMessage = text;
-    if (imageUrl) updateData.imageUrl = imageUrl;
+    const items: any[] = pendingSubmission.items ?? [];
 
-    await (this.prisma as any).taskSubmission.update({
-      where: { id: pendingSubmission.id },
-      data: updateData,
+    if (items.length === 0) {
+      const updateData: Record<string, unknown> = {
+        status: "SUBMITTED",
+        submittedAt: new Date(),
+      };
+      if (text) updateData.rawMessage = text;
+      if (imageUrl) updateData.imageUrl = imageUrl;
+
+      await (this.prisma as any).taskSubmission.update({
+        where: { id: pendingSubmission.id },
+        data: updateData,
+      });
+
+      this.logger.log(`Submission ${pendingSubmission.id} received from worker ${worker.name} (${platform})`);
+      await this.sendVettingFeedback(worker, pendingSubmission.id);
+      return;
+    }
+
+    // ── Multi-item sequential collection ──
+    if (pendingSubmission.status === "REJECTED") {
+      await (this.prisma as any).submissionItem.updateMany({
+        where: { submissionId: pendingSubmission.id },
+        data: { imageUrl: null, rawMessage: null, receivedAt: null },
+      });
+      await (this.prisma as any).taskSubmission.update({
+        where: { id: pendingSubmission.id },
+        data: { status: "PENDING", aiScore: null, aiFindings: null, aiFeedback: null, submittedAt: null },
+      });
+      for (const it of items) {
+        it.imageUrl = null;
+        it.rawMessage = null;
+        it.receivedAt = null;
+      }
+    }
+
+    const nextItem = items.find((it: any) => it.receivedAt == null);
+    if (!nextItem) {
+      await this.messaging.sendToWorker(worker.id, msgSubmissionReceived(worker.name));
+      return;
+    }
+
+    const itemUpdate: Record<string, unknown> = { receivedAt: new Date() };
+    if (imageUrl) itemUpdate.imageUrl = imageUrl;
+    if (text) itemUpdate.rawMessage = text;
+
+    await (this.prisma as any).submissionItem.update({
+      where: { id: nextItem.id },
+      data: itemUpdate,
     });
 
-    this.logger.log(`Submission ${pendingSubmission.id} received from worker ${worker.name} (${platform})`);
+    const receivedCount = items.filter((it: any) => it.receivedAt != null).length + 1;
+    const totalCount = items.length;
 
-    await this.sendVettingFeedback(worker, pendingSubmission.id);
+    if (receivedCount < totalCount) {
+      const nextPending = items.find((it: any) => it.receivedAt == null && it.id !== nextItem.id);
+      await (this.prisma as any).taskSubmission.update({
+        where: { id: pendingSubmission.id },
+        data: { status: "COLLECTING" },
+      });
+      await this.messaging.sendToWorker(
+        worker.id,
+        msgItemReceived(nextItem.label, receivedCount, totalCount, nextPending?.label ?? "next item"),
+      );
+    } else {
+      await (this.prisma as any).taskSubmission.update({
+        where: { id: pendingSubmission.id },
+        data: { status: "SUBMITTED", submittedAt: new Date() },
+      });
+      this.logger.log(`All ${totalCount} items received for submission ${pendingSubmission.id} from worker ${worker.name}`);
+      await this.messaging.sendToWorker(worker.id, msgAllItemsReceived(worker.name));
+      await this.sendVettingFeedback(worker, pendingSubmission.id);
+    }
   }
 
   // ─── AI vetting feedback ────────────────────────────────────────

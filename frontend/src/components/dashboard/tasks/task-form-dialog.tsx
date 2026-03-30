@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { HumanTask } from "@/hooks/useHumanTasks";
 import { useAiFillTask } from "@/hooks/useHumanTasks";
 import type { AutomatedTask } from "@/hooks/useAutomatedTasks";
@@ -28,7 +29,7 @@ import type {
   ComposioConnectedAccount,
 } from "@/hooks/useComposioConnections";
 import { useInitiateComposioConnection } from "@/hooks/useComposioConnections";
-import type { TaskFormData, DeliveryDestination } from "./constants";
+import type { TaskFormData, DeliveryDestination, RequiredItemEntry } from "./constants";
 import {
   EVIDENCE_TYPES,
   RECURRENCE_TYPES,
@@ -41,6 +42,7 @@ import {
   getAllTimezones,
   getTimezoneOffset,
 } from "./constants";
+import { TaskSelectDropdown, type TaskSelectOption } from "./task-select-dropdown";
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -60,8 +62,32 @@ interface TaskFormDialogProps {
   composioAppCatalog?: ComposioApp[];
 }
 
+const EVIDENCE_SELECT_OPTIONS: TaskSelectOption[] = EVIDENCE_TYPES.map((t) => ({
+  value: t,
+  label: t,
+}));
+
+const RECURRENCE_SELECT_OPTIONS: TaskSelectOption[] = RECURRENCE_TYPES.map((t) => ({
+  value: t,
+  label: t,
+}));
+
+const REPORT_DOC_SELECT_OPTIONS: TaskSelectOption[] = REPORT_DOC_TYPES.map((t) => ({
+  value: t,
+  label: t === "none" ? "None (report page only)" : t === "googledocs" ? "Google Docs" : "Notion",
+}));
+
+const DELIVERY_TYPE_SELECT_OPTIONS: TaskSelectOption[] = DELIVERY_TYPES.map((dt) => ({
+  value: dt.value,
+  label: dt.label,
+}));
+
 const inputClass =
   "w-full px-3 py-2 border border-input rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
+const selectTriggerClass = cn(
+  inputClass,
+  "flex items-center justify-between gap-1.5 text-left font-normal",
+);
 const labelClass = "block text-[11px] font-medium text-muted-foreground mb-1";
 const sectionClass = "border-t border-border pt-3.5";
 const sectionTitle = "text-[11px] font-medium text-foreground mb-2.5";
@@ -439,6 +465,31 @@ export function TaskFormDialog({
     form.recurrenceType === "DAILY" || form.recurrenceType === "WEEKLY";
   const showInterval = form.recurrenceType === "CUSTOM";
 
+  const DOC_TYPE_COMPOSIO_SLUG: Record<string, string> = {
+    googledocs: "googledocs",
+    notion: "notion",
+  };
+
+  const docTypeConnected = useMemo(() => {
+    const slug = DOC_TYPE_COMPOSIO_SLUG[form.reportDocType];
+    if (!slug) return true;
+    return connectedAccounts.some(
+      (a) =>
+        a.appName?.toLowerCase() === slug.toLowerCase() && a.status === "ACTIVE",
+    );
+  }, [form.reportDocType, connectedAccounts]);
+
+  const notificationChannelOptions = useMemo<TaskSelectOption[]>(
+    () => [
+      { value: "", label: "Select a channel..." },
+      ...channels.map((ch) => ({
+        value: ch.id,
+        label: `${ch.label || ch.id} (${ch.platform})`,
+      })),
+    ],
+    [channels],
+  );
+
   const dest = form.deliveryDestination;
   const destNeedsComposio =
     !isAutomated &&
@@ -578,6 +629,8 @@ export function TaskFormDialog({
               (fields.acceptanceRules as string[]).length > 0
                 ? (fields.acceptanceRules as string[])
                 : [""];
+          if (Array.isArray(fields.requiredItems))
+            merged.requiredItems = fields.requiredItems as RequiredItemEntry[];
           if (typeof fields.scoringEnabled === "boolean")
             merged.scoringEnabled = fields.scoringEnabled;
           if (typeof fields.passingScore === "number")
@@ -615,6 +668,40 @@ export function TaskFormDialog({
         i === index ? value : r,
       ),
     }));
+  }
+
+  function addRequiredItem() {
+    setForm((f) => ({
+      ...f,
+      requiredItems: [...f.requiredItems, { label: "", evidenceType: f.evidenceType || "PHOTO" }],
+    }));
+  }
+
+  function removeRequiredItem(index: number) {
+    setForm((f) => ({
+      ...f,
+      requiredItems: f.requiredItems.filter((_, i) => i !== index),
+    }));
+  }
+
+  function updateRequiredItem(index: number, patch: Partial<RequiredItemEntry>) {
+    setForm((f) => ({
+      ...f,
+      requiredItems: f.requiredItems.map((it, i) => (i === index ? { ...it, ...patch } : it)),
+    }));
+  }
+
+  async function uploadReferenceFile(index: number, file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/uploads", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      updateRequiredItem(index, { referenceUrl: data.url });
+    } catch {
+      toast.error("Failed to upload reference image");
+    }
   }
 
   function setDeliveryType(type: string) {
@@ -833,22 +920,20 @@ export function TaskFormDialog({
             {/* ── Section 2: Channel (human only) ── */}
             {!isAutomated && (
             <div>
-              <label className={labelClass}>Notification Channel *</label>
-              <select
+              <TaskSelectDropdown
+                label="Notification Channel"
                 value={form.taskChannelId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, taskChannelId: e.target.value }))
+                onChange={(v) =>
+                  setForm((f) => ({ ...f, taskChannelId: v }))
                 }
-                className={inputClass}
+                options={notificationChannelOptions}
+                ariaLabel="Select notification channel"
+                labelClassName={labelClass}
+                buttonClassName={selectTriggerClass}
                 required
-              >
-                <option value="">Select a channel...</option>
-                {channels.map((ch) => (
-                  <option key={ch.id} value={ch.id}>
-                    {ch.label || ch.id} ({ch.platform})
-                  </option>
-                ))}
-              </select>
+                disabled={channels.length === 0}
+                contentZIndexClass="z-[200]"
+              />
               {channels.length === 0 && (
                 <p className="text-[10px] text-muted-foreground mt-1">
                   No channels configured. Add one in Channels first.
@@ -863,42 +948,32 @@ export function TaskFormDialog({
               <p className={sectionTitle}>Evidence & Schedule</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Evidence Type</label>
-                  <select
+                  <TaskSelectDropdown
+                    label="Evidence Type"
                     value={form.evidenceType}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        evidenceType: e.target.value,
-                      }))
+                    onChange={(v) =>
+                      setForm((f) => ({ ...f, evidenceType: v }))
                     }
-                    className={inputClass}
-                  >
-                    {EVIDENCE_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                    options={EVIDENCE_SELECT_OPTIONS}
+                    ariaLabel="Evidence type"
+                    labelClassName={labelClass}
+                    buttonClassName={selectTriggerClass}
+                    contentZIndexClass="z-[200]"
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>Recurrence</label>
-                  <select
+                  <TaskSelectDropdown
+                    label="Recurrence"
                     value={form.recurrenceType}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        recurrenceType: e.target.value,
-                      }))
+                    onChange={(v) =>
+                      setForm((f) => ({ ...f, recurrenceType: v }))
                     }
-                    className={inputClass}
-                  >
-                    {RECURRENCE_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                    options={RECURRENCE_SELECT_OPTIONS}
+                    ariaLabel="Recurrence"
+                    labelClassName={labelClass}
+                    buttonClassName={selectTriggerClass}
+                    contentZIndexClass="z-[200]"
+                  />
                 </div>
               </div>
 
@@ -1020,6 +1095,83 @@ export function TaskFormDialog({
               </div>
             </div>}
 
+            {/* ── Section 4b: Required Evidence Items (human only, multi-item) ── */}
+            {!isAutomated && <div className={sectionClass}>
+              <div className="flex items-center justify-between mb-2.5">
+                <div>
+                  <p className={sectionTitle}>Required Evidence Items</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Leave empty for single-item submissions. Add items for multi-item (e.g. kitchen, bathroom).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addRequiredItem}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Plus className="h-2.5 w-2.5" /> Add item
+                </button>
+              </div>
+              {form.requiredItems.length > 0 && (
+                <div className="space-y-2.5">
+                  {form.requiredItems.map((item, i) => (
+                    <div key={i} className="rounded-lg border border-border p-2.5 space-y-2">
+                      <div className="flex gap-2 items-start">
+                        <input
+                          type="text"
+                          value={item.label}
+                          onChange={(e) => updateRequiredItem(i, { label: e.target.value })}
+                          className={`${inputClass} flex-1`}
+                          placeholder={`Item ${i + 1} label: e.g. "Kitchen"`}
+                        />
+                        <select
+                          value={item.evidenceType}
+                          onChange={(e) => updateRequiredItem(i, { evidenceType: e.target.value })}
+                          className={`${inputClass} w-24`}
+                        >
+                          {EVIDENCE_TYPES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => removeRequiredItem(i)}
+                          className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] text-muted-foreground shrink-0">Reference:</label>
+                        {item.referenceUrl ? (
+                          <div className="flex items-center gap-2">
+                            <img src={item.referenceUrl} alt="Reference" className="h-8 w-8 rounded object-cover border border-border" />
+                            <button
+                              type="button"
+                              onClick={() => updateRequiredItem(i, { referenceUrl: undefined })}
+                              className="text-[10px] text-destructive hover:underline"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) uploadReferenceFile(i, file);
+                            }}
+                            className="text-[10px] text-muted-foreground"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>}
+
             {/* ── Section 5: Scoring (human only) ── */}
             {!isAutomated && <div className={sectionClass}>
               <p className={sectionTitle}>Scoring</p>
@@ -1115,26 +1267,38 @@ export function TaskFormDialog({
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Document Type</label>
-                  <select
+                  <TaskSelectDropdown
+                    label="Document Type"
                     value={form.reportDocType}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        reportDocType: e.target.value,
-                      }))
+                    onChange={(v) =>
+                      setForm((f) => ({ ...f, reportDocType: v }))
                     }
-                    className={inputClass}
-                  >
-                    {REPORT_DOC_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t === "googledocs" ? "Google Docs" : "Notion"}
-                      </option>
-                    ))}
-                  </select>
+                    options={REPORT_DOC_SELECT_OPTIONS}
+                    ariaLabel="Report document type"
+                    labelClassName={labelClass}
+                    buttonClassName={selectTriggerClass}
+                    contentZIndexClass="z-[200]"
+                  />
+                  {form.reportDocType && form.reportDocType !== "none" && (() => {
+                    const slug = form.reportDocType === "googledocs" ? "googledocs" : "notion";
+                    const connected = connectedAccounts.some(
+                      (a) => a.appName?.toLowerCase() === slug.toLowerCase() && a.status === "ACTIVE"
+                    );
+                    if (!connected) {
+                      return (
+                        <p className="text-[10px] text-destructive mt-1">
+                          Connect {form.reportDocType === "googledocs" ? "Google Docs" : "Notion"} in{" "}
+                          <Link href="/connected-apps" className="underline">Connected Apps</Link>{" "}
+                          before generating reports.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
+              {form.reportDocType !== "none" && (
               <div className="mt-3">
                 <label className={labelClass}>Folder ID (optional)</label>
                 <input
@@ -1150,6 +1314,7 @@ export function TaskFormDialog({
                   placeholder="Drive or Notion folder ID"
                 />
               </div>
+              )}
               </>
               )}
 
@@ -1159,23 +1324,20 @@ export function TaskFormDialog({
                   Delivery Destination
                 </p>
                 <p className="text-[10px] text-muted-foreground mb-2.5">
-                  Reports will be delivered directly to your personal account
-                  — not to any group or channel.
+                  Where Isaac sends a report summary when generated. Leave as None for report page only.
                 </p>
 
                 <div>
-                  <label className={labelClass}>Platform</label>
-                  <select
+                  <TaskSelectDropdown
+                    label="Platform"
                     value={dest.type}
-                    onChange={(e) => setDeliveryType(e.target.value)}
-                    className={inputClass}
-                  >
-                    {DELIVERY_TYPES.map((dt) => (
-                      <option key={dt.value} value={dt.value}>
-                        {dt.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setDeliveryType}
+                    options={DELIVERY_TYPE_SELECT_OPTIONS}
+                    ariaLabel="Delivery platform"
+                    labelClassName={labelClass}
+                    buttonClassName={selectTriggerClass}
+                    contentZIndexClass="z-[200]"
+                  />
                 </div>
 
                 {dest.type && (
@@ -1234,7 +1396,7 @@ export function TaskFormDialog({
               <button
                 type="submit"
                 disabled={
-                  createPending || updatePending || destNeedsComposio
+                  createPending || updatePending || destNeedsComposio || (!isAutomated && !docTypeConnected)
                 }
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >

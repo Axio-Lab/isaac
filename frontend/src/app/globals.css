@@ -1,32 +1,76 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  /* Optional later: swap --font-serif to another next/font variable */
-  --font-serif: ui-serif, Georgia, serif;
+:root {
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-ring: #3b82f6;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
 
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #475569;
+  --color-border: #e2e8f0;
+  --color-input: #cbd5e1;
+  --color-secondary: #f8fafc;
+  --color-secondary-foreground: #0f172a;
+  --color-accent: #eef2ff;
+  --color-accent-foreground: #1e1b4b;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-surface: #f8fafc;
+}
+
+.dark {
   --color-background: #000000;
   --color-foreground: #ffffff;
   --color-muted: #111111;
   --color-muted-foreground: #888888;
   --color-border: #1a1a1a;
   --color-input: #1a1a1a;
-  --color-ring: #3b82f6;
-  --color-primary: #3b82f6;
-  --color-primary-foreground: #ffffff;
   --color-secondary: #111111;
   --color-secondary-foreground: #ffffff;
   --color-accent: #0d0d0d;
   --color-accent-foreground: #ffffff;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
   --color-card: #070707;
   --color-card-foreground: #ffffff;
   --color-popover: #070707;
   --color-popover-foreground: #ffffff;
   --color-surface: #0a0a0a;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Optional later: swap --font-serif to another next/font variable */
+  --font-serif: ui-serif, Georgia, serif;
+
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-border: var(--color-border);
+  --color-input: var(--color-input);
+  --color-ring: var(--color-ring);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-destructive: var(--color-destructive);
+  --color-destructive-foreground: var(--color-destructive-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-popover: var(--color-popover);
+  --color-popover-foreground: var(--color-popover-foreground);
+  --color-surface: var(--color-surface);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -52,12 +96,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #1a1a1a;
+    background: var(--color-border);
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #333333;
+    background: var(--color-muted-foreground);
   }
 }
 
@@ -69,28 +113,33 @@
   }
 
   .glow {
-    box-shadow: 0 0 24px rgba(59, 130, 246, 0.2), 0 0 80px rgba(59, 130, 246, 0.06);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--color-primary) 20%, transparent),
+                0 0 80px color-mix(in srgb, var(--color-primary) 6%, transparent);
   }
 
   .glow-subtle {
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 8%, transparent);
   }
 }
 
 /* ─── Glass Button ─── */
 .glass-button-wrap {
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-highlight: rgba(255, 255, 255, 0.12);
-  --glass-shadow: rgba(59, 130, 246, 0.25);
-  --glass-text: #ffffff;
+  --glass-bg: rgba(15, 23, 42, 0.04);
+  --glass-border: rgba(15, 23, 42, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+  --glass-shadow: rgba(37, 99, 235, 0.18);
+  --glass-text: var(--color-foreground);
   position: relative;
   display: flex;
+  align-items: stretch;
 }
 
 .glass-button {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: inherit;
@@ -119,23 +168,18 @@
 }
 
 .glass-button:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
-  transform: translateY(-1px);
+  background: color-mix(in oklab, var(--glass-bg) 70%, var(--color-foreground) 8%);
+  border-color: color-mix(in oklab, var(--glass-border) 75%, var(--color-foreground) 20%);
 }
 
 .glass-button:hover::before {
   opacity: 1;
 }
 
-.glass-button:active {
-  transform: translateY(0);
-}
-
 .glass-button-text {
   position: relative;
   z-index: 2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: none;
 }
 
 .glass-button-shadow {
@@ -144,7 +188,7 @@
   z-index: 0;
   opacity: 0;
   transition: opacity 0.25s ease;
-  box-shadow: 0 4px 24px var(--glass-shadow), 0 0 40px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 4px 24px var(--glass-shadow), 0 0 40px color-mix(in srgb, var(--color-primary) 8%, transparent);
   pointer-events: none;
 }
 
@@ -154,14 +198,15 @@
 
 /* Filled variant override */
 .glass-button-wrap.glass-filled .glass-button {
-  --glass-bg: rgba(59, 130, 246, 0.15);
-  --glass-border: rgba(59, 130, 246, 0.3);
-  --glass-highlight: rgba(59, 130, 246, 0.2);
+  --glass-bg: color-mix(in oklab, var(--color-primary) 18%, transparent);
+  --glass-border: color-mix(in oklab, var(--color-primary) 45%, transparent);
+  --glass-highlight: color-mix(in oklab, var(--color-primary) 20%, white);
+  --glass-text: color-mix(in oklab, var(--color-primary) 80%, black 20%);
 }
 
 .glass-button-wrap.glass-filled .glass-button:hover {
-  background: rgba(59, 130, 246, 0.22);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: color-mix(in oklab, var(--color-primary) 24%, transparent);
+  border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
 }
 
 /* Danger variant */
@@ -175,4 +220,24 @@
 .glass-button-wrap.glass-danger .glass-button:hover {
   background: rgba(239, 68, 68, 0.18);
   border-color: rgba(239, 68, 68, 0.35);
+}
+
+.dark .glass-button-wrap {
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --glass-shadow: rgba(59, 130, 246, 0.25);
+  --glass-text: #ffffff;
+}
+
+.dark .glass-button-wrap.glass-filled .glass-button {
+  --glass-bg: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  --glass-border: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  --glass-highlight: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --glass-text: #ffffff;
+}
+
+.dark .glass-button-wrap.glass-filled .glass-button:hover {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
 }

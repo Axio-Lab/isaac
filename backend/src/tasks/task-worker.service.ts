@@ -11,6 +11,7 @@ import {
   msgWorkerPaused,
   msgWorkerReactivated,
   msgWorkerRemoved,
+  type TaskInfoForWorker,
 } from "@/channels/bot-messages";
 
 export interface WorkerCreateInput {
@@ -80,7 +81,7 @@ export class TaskWorkerService {
       },
     });
 
-    this.sendOnboardingMessage(worker.id, worker.name, task.name).catch(
+    this.sendOnboardingMessage(worker.id, worker.name, taskId).catch(
       (err) =>
         this.logger.warn(
           `Onboarding message failed for worker ${worker.id}: ${err.message}`,
@@ -93,9 +94,27 @@ export class TaskWorkerService {
   private async sendOnboardingMessage(
     workerId: string,
     workerName: string,
-    taskName: string,
+    taskId: string,
   ): Promise<void> {
-    await this.messaging.sendToWorker(workerId, msgOnboardingWelcome(workerName, taskName));
+    const task = await (this.prisma as any).humanTask.findUnique({
+      where: { id: taskId },
+    });
+    if (!task) {
+      await this.messaging.sendToWorker(workerId, msgOnboardingWelcome(workerName, "Unknown Task"));
+      return;
+    }
+    const info: TaskInfoForWorker = {
+      name: task.name,
+      description: task.description,
+      evidenceType: task.evidenceType || "PHOTO",
+      requiredItems: Array.isArray(task.requiredItems) ? task.requiredItems : [],
+      acceptanceRules: Array.isArray(task.acceptanceRules) ? task.acceptanceRules : [],
+      scheduledTimes: Array.isArray(task.scheduledTimes) ? task.scheduledTimes : [],
+      timezone: task.timezone || "UTC",
+      passingScore: task.passingScore ?? 70,
+      resubmissionAllowed: task.resubmissionAllowed ?? true,
+    };
+    await this.messaging.sendToWorker(workerId, msgOnboardingWelcome(workerName, info));
   }
 
   async updateWorker(

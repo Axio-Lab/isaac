@@ -18,45 +18,7 @@ import { TasksService } from "./tasks.service";
 import { TaskWorkerService } from "./task-worker.service";
 import { TaskSubmissionService } from "./task-submission.service";
 import { TaskReportService } from "./task-report.service";
-
-const AI_FILL_SYSTEM_PROMPT = `You are a task configuration assistant. Given a user prompt describing a task they want to create, return ONLY valid JSON (no markdown, no backticks) matching this shape:
-{
-  "name": "string (required)",
-  "description": "string",
-  "evidenceType": "PHOTO|VIDEO|TEXT|DOCUMENT|LOCATION|AUDIO|ANY",
-  "recurrenceType": "ONCE|DAILY|WEEKLY|MONTHLY|CUSTOM",
-  "recurrenceInterval": number (minutes, only if CUSTOM),
-  "scheduledTimes": ["HH:MM", ...],
-  "timezone": "IANA timezone string",
-  "acceptanceRules": ["string", ...],
-  "scoringEnabled": boolean,
-  "passingScore": number (0-100),
-  "graceMinutes": number,
-  "resubmissionAllowed": boolean,
-  "reportTime": "HH:MM",
-  "reportDocType": "googledocs|notion"
-}
-Only include fields you can confidently infer. Do NOT include taskChannelId, destinations, or reportFolderId as those are user-specific. Return ONLY the JSON object.`;
-
-const AI_FILL_AUTOMATED_SYSTEM_PROMPT = `You are configuring an automated task that Isaac runs on a schedule. It may use Composio-connected tools (Gmail, Slack, Notion, etc.) when needed, or run as pure agent reasoning with no integrations.
-
-Given the user's description and the bracketed context about which apps they already connected, return ONLY valid JSON (no markdown, no backticks) matching this shape:
-{
-  "name": "string (required, short title)",
-  "description": "string",
-  "prompt": "string (required — detailed instructions for the agent: what to check, what to produce, which tools to prefer when applicable)",
-  "composioApps": ["GMAIL"],
-  "connectSuggestions": [ { "app": "GMAIL", "reason": "one short line why connecting helps" } ],
-  "recurrenceType": "ONCE|DAILY|WEEKLY|MONTHLY|CUSTOM",
-  "recurrenceInterval": number,
-  "scheduledTimes": ["HH:MM", ...],
-  "timezone": "IANA timezone string"
-}
-
-Rules:
-- "composioApps": UPPERCASE names. Include ONLY apps that appear in the user's connected-apps list from the context line. If the task needs no external API/tool (e.g. only summarization from pasted context, or internal logic), use [].
-- "connectSuggestions": For each Composio app that would materially help this task but is NOT in the user's connected list, add one object. If the task needs no extra connections, or connected apps already suffice, use []. Do not duplicate apps they already have.
-- Only include object keys you can confidently infer. Return ONLY the JSON object.`;
+import { getTaskInstructions } from "@/agent/isaac-system-prompt";
 
 @Controller("human-tasks")
 @UseGuards(AuthGuard)
@@ -96,8 +58,8 @@ export class TasksController {
       : body.prompt.trim();
 
     const systemPrompt = isAutomated
-      ? AI_FILL_AUTOMATED_SYSTEM_PROMPT
-      : AI_FILL_SYSTEM_PROMPT;
+      ? getTaskInstructions("ai-fill-automated")
+      : getTaskInstructions("ai-fill-human");
 
     const { text } = await this.agentService.generateTextWithSystemPrompt({
       systemPrompt,
@@ -263,7 +225,27 @@ export class TasksController {
       taskId,
       req.userId,
     );
-    return { report };
+    const delivered = await this.reportService.deliverAndRecord(
+      report.id,
+      taskId,
+      req.userId,
+    );
+    return { report: delivered };
+  }
+
+  @Post(":taskId/reports/:reportId/resend")
+  @HttpCode(HttpStatus.OK)
+  async resendReport(
+    @Req() req: any,
+    @Param("taskId") taskId: string,
+    @Param("reportId") reportId: string,
+  ) {
+    const report = await this.reportService.deliverAndRecord(
+      reportId,
+      taskId,
+      req.userId,
+    );
+    return { success: true, report };
   }
 
   @Delete(":taskId/reports/:reportId")

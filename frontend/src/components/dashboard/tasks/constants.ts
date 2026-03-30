@@ -16,7 +16,7 @@ export const RECURRENCE_TYPES = [
   "CUSTOM",
 ] as const;
 
-export const REPORT_DOC_TYPES = ["googledocs", "notion"] as const;
+export const REPORT_DOC_TYPES = ["none", "googledocs", "notion"] as const;
 
 export const DELIVERY_TYPES = [
   { value: "", label: "None" },
@@ -25,6 +25,14 @@ export const DELIVERY_TYPES = [
   { value: "telegram", label: "Telegram" },
   { value: "whatsapp", label: "WhatsApp" },
   { value: "gmail", label: "Gmail" },
+] as const;
+
+/** Chat / bot notification channels only (task list filter). Excludes email (Gmail). */
+export const CHAT_NOTIFICATION_PLATFORMS = [
+  { value: "slack", label: "Slack" },
+  { value: "discord", label: "Discord" },
+  { value: "telegram", label: "Telegram" },
+  { value: "whatsapp", label: "WhatsApp" },
 ] as const;
 
 export const COMPOSIO_DELIVERY_TYPES: Record<string, string> = {
@@ -124,6 +132,12 @@ export interface DeliveryDestination {
 
 export type TaskFormType = "HUMAN" | "AUTOMATED";
 
+export interface RequiredItemEntry {
+  label: string;
+  evidenceType: string;
+  referenceUrl?: string;
+}
+
 export interface TaskFormData {
   taskType: TaskFormType;
   name: string;
@@ -136,6 +150,7 @@ export interface TaskFormData {
   timezone: string;
   taskChannelId: string;
   acceptanceRules: string[];
+  requiredItems: RequiredItemEntry[];
   scoringEnabled: boolean;
   passingScore: number;
   graceMinutes: number;
@@ -166,12 +181,13 @@ export const defaultForm: TaskFormData = {
   timezone: getBrowserTimezone(),
   taskChannelId: "",
   acceptanceRules: [""],
+  requiredItems: [],
   scoringEnabled: true,
   passingScore: 70,
   graceMinutes: 15,
   resubmissionAllowed: true,
   reportTime: "18:00",
-  reportDocType: "googledocs",
+  reportDocType: "none",
   reportFolderId: "",
   deliveryDestination: { ...emptyDestination },
   prompt: "",

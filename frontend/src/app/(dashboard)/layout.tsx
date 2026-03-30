@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth-client";
+import { useTheme } from "@/app/providers";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -18,6 +19,8 @@ import {
   Menu,
   X,
   ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const navItems = [
@@ -36,6 +39,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -84,7 +88,13 @@ export default function DashboardLayout({
         <div className="flex items-center justify-between h-13 px-4 border-b border-border shrink-0">
           <Link href="/tasks" className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+              <img
+                src="/images/isaac-mark.svg"
+                alt=""
+                className="h-4 w-4"
+                width={16}
+                height={16}
+              />
             </div>
             <span className="text-sm font-semibold tracking-tight text-foreground">Isaac</span>
           </Link>
@@ -134,6 +144,17 @@ export default function DashboardLayout({
               </p>
             </div>
             <button
+              onClick={toggleTheme}
+              className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-3.5 w-3.5" />
+              ) : (
+                <Moon className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <button
               onClick={() =>
                 signOut({
                   fetchOptions: { onSuccess: () => router.replace("/login") },
@@ -164,6 +185,13 @@ export default function DashboardLayout({
               </>
             )}
           </div>
+          <button
+            onClick={toggleTheme}
+            className="ml-auto p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </header>
 
         <main className="flex-1 overflow-hidden relative">

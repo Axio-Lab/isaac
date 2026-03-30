@@ -1,27 +1,34 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import {
   getZonedDayBoundsUtc,
   isValidIanaTimeZone,
 } from "@/common/lib/taskTimezone";
+import { ReportDeliveryService } from "@/reports/report-delivery.service";
 import { TaskSubmissionService } from "./task-submission.service";
+import { getTaskInstructions } from "@/agent/isaac-system-prompt";
 
 @Injectable()
 export class TaskReportService {
+  private readonly logger = new Logger(TaskReportService.name);
+
   private generateText: ((opts: {
     systemPrompt: string;
     userPrompt: string;
+    images?: Array<{ base64: string; mediaType: string }>;
   }) => Promise<{ text: string }>) | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly submissionService: TaskSubmissionService,
+    private readonly reportDelivery: ReportDeliveryService,
   ) {}
 
   setGenerateText(
     fn: (opts: {
       systemPrompt: string;
       userPrompt: string;
+      images?: Array<{ base64: string; mediaType: string }>;
     }) => Promise<{ text: string }>,
   ) {
     this.generateText = fn;
@@ -116,7 +123,7 @@ export class TaskReportService {
     let summaryMarkdown: string;
 
     if (this.generateText) {
-      const dataForAI =
+      const reportData =
         `Task: ${task.name}\nDate: ${periodStart.toISOString().split("T")[0]}\n` +
         `Total Due: ${totalDue}\nSubmitted: ${submitted}\nMissed: ${missed}\n` +
         `Avg Score: ${avgScore ?? "N/A"}\nPass Rate: ${passRate ?? "N/A"}%\n\n` +
@@ -124,9 +131,8 @@ export class TaskReportService {
         `Flagged Workers: ${flaggedWorkerIds.length > 0 ? flaggedWorkerIds.join(", ") : "None"}`;
 
       const { text } = await this.generateText({
-        systemPrompt:
-          "You are a compliance report writer. Generate a clear, professional daily task compliance report in markdown format. Include a summary, worker breakdown, and any flags or recommendations.",
-        userPrompt: dataForAI,
+        systemPrompt: getTaskInstructions("report"),
+        userPrompt: reportData,
       });
       summaryMarkdown = text;
     } else {
@@ -163,10 +169,165 @@ export class TaskReportService {
     return report;
   }
 
+  /**
+   * Handles doc creation (if configured), delivery to destinations (if configured),
+   * and updates the report record with documentUrl / deliveredAt / deliveredTo.
+   * Used by cron, manual generate, and resend.
+   */
+  async deliverAndRecord(reportId: string, taskId: string, userId: string): Promise<any> {
+    const report = await this.getReport(reportId);
+    const task = await (this.prisma as any).humanTask.findFirst({
+      where: { id: taskId, userId },
+    });
+    if (!task) return report;
+
+    const dc = (task.deliveryConfig ?? {}) as Record<string, unknown>;
+    const destinations = (dc.destinations ?? []) as Array<{
+      type: string;
+      channelId: string;
+      channelName?: string;
+    }>;
+    const rawDocType = (dc.reportDocType as string) || "";
+
+    const reportDate = new Date(report.periodStart).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    let docUrl: string | null = report.documentUrl ?? null;
+
+    const shouldCreateDoc = rawDocType && rawDocType !== "none";
+    if (shouldCreateDoc) {
+      const documentType = rawDocType === "notion" ? "notion" : "google_doc";
+      const folderId = (dc.reportFolderId as string) || task.reportFolderId || undefined;
+      try {
+        docUrl = await this.reportDelivery.createReportDocument({
+          userId,
+          title: `${task.name} report for ${reportDate}`,
+          content: report.summaryMarkdown,
+          documentType,
+          folderId,
+        });
+      } catch (err: any) {
+        this.logger.warn(`Document creation failed for task ${taskId}: ${err.message}`);
+      }
+    }
+
+    let deliveryResults: Record<string, boolean> | null = null;
+
+    if (destinations.length > 0) {
+      const destTypes = destinations.map((d) => d.type as any);
+      const deliveryConfig: Record<string, string | undefined> = {};
+      for (const d of destinations) {
+        if (d.type === "telegram") deliveryConfig.telegramChatId = d.channelId;
+        if (d.type === "slack") deliveryConfig.slackChannelId = d.channelId;
+        if (d.type === "discord") deliveryConfig.discordChannelId = d.channelId;
+        if (d.type === "whatsapp") deliveryConfig.whatsappNumber = d.channelId;
+        if (d.type === "gmail") deliveryConfig.recipientEmail = d.channelId;
+      }
+      deliveryConfig.emailSubject = `${task.name} report for ${reportDate}`;
+
+      const execSummary = this.extractExecSummary(report.summaryMarkdown);
+      const summary =
+        `${task.name} report for ${reportDate}\n\n` +
+        execSummary +
+        (docUrl ? `\n\nFull report: ${docUrl}` : "");
+
+      try {
+        deliveryResults = await this.reportDelivery.deliverToDestinations(
+          destTypes,
+          summary,
+          null,
+          userId,
+          deliveryConfig,
+        );
+        this.logger.log(`Report delivery results for task ${taskId}: ${JSON.stringify(deliveryResults)}`);
+      } catch (err: any) {
+        this.logger.error(`Report delivery failed for task ${taskId}: ${err.message}`);
+      }
+    }
+
+    const hasDelivery = docUrl || deliveryResults;
+    if (hasDelivery) {
+      return (this.prisma as any).taskComplianceReport.update({
+        where: { id: reportId },
+        data: {
+          ...(docUrl ? { documentUrl: docUrl } : {}),
+          ...(deliveryResults ? { deliveredAt: new Date(), deliveredTo: deliveryResults } : {}),
+        },
+      });
+    }
+
+    return report;
+  }
+
+  /**
+   * Short text for email / chat delivery. Uses only the Worker Review section so we
+   * do not concatenate Issues bullets into one awkward line (first-N-lines was doing that).
+   */
+  private extractExecSummary(markdown: string): string {
+    const workerSection = this.extractMarkdownSection(markdown, "Worker Review");
+    const source = workerSection ?? this.fallbackReportProse(markdown);
+
+    const lines = source
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+
+    const parts: string[] = [];
+    for (const line of lines) {
+      const clean = line
+        .replace(/\*\*/g, "")
+        .replace(/^[-*•]\s*/, "")
+        .replace(/^[0-9]+[.)]\s*/, "")
+        .trim();
+      if (!clean) continue;
+      parts.push(clean);
+    }
+
+    const joined = parts.join(" ");
+    if (!joined) return markdown.slice(0, 280).trim();
+
+    const sentenceSplit = joined.match(/[^.!?]+(?:[.!?]+|$)/g);
+    if (sentenceSplit && sentenceSplit.length > 0) {
+      const two = sentenceSplit
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(" ")
+        .trim();
+      if (two) return two;
+    }
+    return joined.slice(0, 400).trim();
+  }
+
+  private extractMarkdownSection(full: string, title: string): string | null {
+    const re = new RegExp(
+      `^##\\s*${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
+      "im",
+    );
+    const m = full.match(re);
+    if (!m || m.index === undefined) return null;
+    const start = m.index + m[0].length;
+    const rest = full.slice(start);
+    const nextHeading = rest.search(/^\s*##\s+/m);
+    const body = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
+    const trimmed = body.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  /** First prose block before any ## heading (legacy reports without Worker Review). */
+  private fallbackReportProse(markdown: string): string {
+    const idx = markdown.search(/^\s*##\s+/m);
+    const head = idx === -1 ? markdown : markdown.slice(0, idx);
+    return head.replace(/^#[^\n]*\n?/gm, "").trim();
+  }
+
   async listReports(taskId: string) {
     return (this.prisma as any).taskComplianceReport.findMany({
       where: { humanTaskId: taskId },
-      orderBy: { periodStart: "desc" },
+      orderBy: { createdAt: "desc" },
     });
   }
 
