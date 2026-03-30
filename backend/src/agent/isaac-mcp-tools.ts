@@ -147,10 +147,7 @@ const updateTask: IsaacTool = {
       .enum(["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED", "PAUSED", "CANCELLED"])
       .optional()
       .describe("New status"),
-    priority: z
-      .enum(["LOW", "MEDIUM", "HIGH", "URGENT"])
-      .optional()
-      .describe("New priority"),
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional().describe("New priority"),
     dueDate: z.string().optional().describe("New due date in ISO format"),
     assigneeId: z.string().optional().describe("New assignee worker ID"),
   }),
@@ -265,10 +262,7 @@ const listWorkers: IsaacTool = {
   name: "listWorkers",
   description: "List all workers/team members associated with the current user.",
   inputSchema: z.object({
-    includeStats: z
-      .boolean()
-      .optional()
-      .describe("Include task completion stats per worker"),
+    includeStats: z.boolean().optional().describe("Include task completion stats per worker"),
   }),
   execute: async (args, context) => {
     const workers = await context.prisma.worker.findMany({
@@ -307,7 +301,7 @@ const listWorkers: IsaacTool = {
           ]);
 
           return { ...worker, stats: { total, completed, inProgress } };
-        }),
+        })
       );
       return { workers: enriched };
     }
@@ -422,7 +416,7 @@ const generateReport: IsaacTool = {
       .enum(["summary", "performance", "overdue", "worker-stats"])
       .describe(
         "Report type: summary (overall overview), performance (completion metrics), " +
-        "overdue (overdue task analysis), worker-stats (per-worker breakdown)",
+          "overdue (overdue task analysis), worker-stats (per-worker breakdown)"
       ),
     dateFrom: z.string().optional().describe("Start date for report period (ISO format)"),
     dateTo: z.string().optional().describe("End date for report period (ISO format)"),
@@ -505,7 +499,7 @@ const generateReport: IsaacTool = {
             completed: wCompleted,
             completionRate: wTotal > 0 ? Math.round((wCompleted / wTotal) * 100) : 0,
           };
-        }),
+        })
       );
     }
 

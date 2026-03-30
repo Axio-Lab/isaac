@@ -25,10 +25,7 @@ import {
 } from "@/hooks/useAutomatedTasks";
 import type { AutomatedTask } from "@/hooks/useAutomatedTasks";
 import { useActiveChannels } from "@/hooks/useTaskChannels";
-import {
-  useComposioApps,
-  useComposioConnectedAccounts,
-} from "@/hooks/useComposioConnections";
+import { useComposioApps, useComposioConnectedAccounts } from "@/hooks/useComposioConnections";
 import { Plus, Loader2, CalendarDays, FileEdit, Search } from "lucide-react";
 import { toast } from "sonner";
 import { GlassButton } from "@/components/ui/glass-button";
@@ -123,8 +120,7 @@ export function TasksView() {
     | { kind: "archive-auto"; id: string; name: string }
     | { kind: "delete-auto"; id: string; name: string };
 
-  const [taskPendingAction, setTaskPendingAction] =
-    useState<TaskPendingAction | null>(null);
+  const [taskPendingAction, setTaskPendingAction] = useState<TaskPendingAction | null>(null);
   const [taskSearch, setTaskSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
@@ -137,7 +133,7 @@ export function TasksView() {
     const human = humanTasks.map((t) => ({ ...t, _taskType: "HUMAN" as const }));
     const auto = automatedTasks.map((t) => ({ ...t, _taskType: "AUTOMATED" as const }));
     return [...human, ...auto].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }, [humanTasks, automatedTasks]);
 
@@ -245,8 +241,12 @@ export function TasksView() {
       scheduledTimes: task.scheduledTimes?.join(", ") || "",
       timezone: task.timezone || getBrowserTimezone(),
       taskChannelId: task.taskChannelId || "",
-      acceptanceRules:
-        task.acceptanceRules?.length > 0 ? [...task.acceptanceRules] : [""],
+      acceptanceRules: task.acceptanceRules?.length > 0 ? [...task.acceptanceRules] : [""],
+      sampleEvidenceUrl: task.sampleEvidenceUrl || "",
+      submissionMode:
+        Array.isArray((task as any).requiredItems) && (task as any).requiredItems.length > 0
+          ? "multi"
+          : "single",
       requiredItems: Array.isArray((task as any).requiredItems) ? (task as any).requiredItems : [],
       scoringEnabled: task.scoringEnabled,
       passingScore: task.passingScore,
@@ -298,9 +298,7 @@ export function TasksView() {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const acceptanceRules = form.acceptanceRules.filter(
-        (r) => r.trim().length > 0,
-      );
+      const acceptanceRules = form.acceptanceRules.filter((r) => r.trim().length > 0);
 
       const destinations: Array<Record<string, string>> = [];
       const dest = form.deliveryDestination;
@@ -322,7 +320,11 @@ export function TasksView() {
         reportChannelId: form.taskChannelId || null,
         taskChannelId: form.taskChannelId || null,
         acceptanceRules,
-        requiredItems: form.requiredItems.filter((it) => it.label.trim().length > 0),
+        sampleEvidenceUrl: form.sampleEvidenceUrl || null,
+        requiredItems:
+          form.submissionMode === "multi"
+            ? form.requiredItems.filter((it) => it.label.trim().length > 0)
+            : [],
         scoringEnabled: form.scoringEnabled,
         passingScore: form.passingScore,
         graceMinutes: form.graceMinutes,
@@ -346,7 +348,7 @@ export function TasksView() {
 
       return payload;
     },
-    [form],
+    [form]
   );
 
   const buildAutoPayload = useCallback(
@@ -379,7 +381,7 @@ export function TasksView() {
       if (status) payload.status = status;
       return payload;
     },
-    [form],
+    [form]
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -387,7 +389,10 @@ export function TasksView() {
     if (form.taskType === "AUTOMATED") {
       const payload = buildAutoPayload();
       if (editingAutoTask) {
-        await updateAutoTask.mutateAsync({ taskId: editingAutoTask.id, data: payload as Partial<AutomatedTask> });
+        await updateAutoTask.mutateAsync({
+          taskId: editingAutoTask.id,
+          data: payload as Partial<AutomatedTask>,
+        });
       } else {
         await createAutoTask.mutateAsync(payload as Partial<AutomatedTask>);
       }
@@ -395,7 +400,10 @@ export function TasksView() {
       const payload = buildHumanPayload();
       if (editingTask) {
         if (editingTask.status === "DRAFT") payload.status = "ACTIVE";
-        await updateTask.mutateAsync({ taskId: editingTask.id, data: payload as Partial<HumanTask> });
+        await updateTask.mutateAsync({
+          taskId: editingTask.id,
+          data: payload as Partial<HumanTask>,
+        });
       } else {
         await createTask.mutateAsync(payload as Partial<HumanTask>);
       }
@@ -413,14 +421,20 @@ export function TasksView() {
       if (form.taskType === "AUTOMATED") {
         const payload = buildAutoPayload("DRAFT");
         if (editingAutoTask) {
-          await updateAutoTask.mutateAsync({ taskId: editingAutoTask.id, data: payload as Partial<AutomatedTask> });
+          await updateAutoTask.mutateAsync({
+            taskId: editingAutoTask.id,
+            data: payload as Partial<AutomatedTask>,
+          });
         } else {
           await createAutoTask.mutateAsync(payload as Partial<AutomatedTask>);
         }
       } else {
         const payload = buildHumanPayload("DRAFT");
         if (editingTask) {
-          await updateTask.mutateAsync({ taskId: editingTask.id, data: payload as Partial<HumanTask> });
+          await updateTask.mutateAsync({
+            taskId: editingTask.id,
+            data: payload as Partial<HumanTask>,
+          });
         } else {
           await createTask.mutateAsync(payload as Partial<HumanTask>);
         }
@@ -551,12 +565,8 @@ export function TasksView() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div>
-          <h1 className="text-lg font-semibold text-foreground tracking-tight">
-            Tasks
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Create and manage your tasks
-          </p>
+          <h1 className="text-lg font-semibold text-foreground tracking-tight">Tasks</h1>
+          <p className="text-xs text-muted-foreground">Create and manage your tasks</p>
         </div>
         <GlassButton
           onClick={openCreate}
@@ -585,10 +595,10 @@ export function TasksView() {
             onChange={setPlatformFilter}
             options={CHANNEL_FILTER_SELECT_OPTIONS}
             ariaLabel="Filter by notification channel"
-            triggerClassName="w-[min(100%,12rem)] sm:w-auto sm:min-w-[10rem]"
+            triggerClassName="w-[min(100%,12rem)] sm:w-auto sm:min-w-40"
           />
         </div>
-        <div className="relative w-full sm:flex-1 sm:min-w-[12rem] sm:max-w-2xl">
+        <div className="relative w-full sm:flex-1 sm:min-w-48 sm:max-w-2xl">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <input
             type="search"
@@ -608,9 +618,7 @@ export function TasksView() {
         >
           <FileEdit className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground">
-              You have an unsaved draft
-            </p>
+            <p className="text-xs font-medium text-foreground">You have an unsaved draft</p>
             <p className="text-[10px] text-muted-foreground">
               Click to continue where you left off
             </p>
@@ -663,7 +671,7 @@ export function TasksView() {
                 onDeletePermanently={requestDeleteHumanTaskPermanently}
                 onManageWorkers={setWorkersTask}
               />
-            ),
+            )
           )}
           <AppPagination
             page={taskListPage}
@@ -679,7 +687,9 @@ export function TasksView() {
           taskId={workersTask.id}
           platform={workersTask.taskChannel.platform}
           open={!!workersTask}
-          onOpenChange={(open) => { if (!open) setWorkersTask(null); }}
+          onOpenChange={(open) => {
+            if (!open) setWorkersTask(null);
+          }}
         />
       )}
 
@@ -689,29 +699,25 @@ export function TasksView() {
           if (!open) setTaskPendingAction(null);
         }}
         title={
-          taskPendingAction?.kind === "delete-auto" ||
-          taskPendingAction?.kind === "delete-human"
+          taskPendingAction?.kind === "delete-auto" || taskPendingAction?.kind === "delete-human"
             ? "Delete permanently?"
             : "Archive task?"
         }
         description={
           taskPendingAction
-            ? taskPendingAction.kind === "delete-auto" ||
-                taskPendingAction.kind === "delete-human"
+            ? taskPendingAction.kind === "delete-auto" || taskPendingAction.kind === "delete-human"
               ? `Permanently delete "${taskPendingAction.name}"? This cannot be undone.`
               : `Archive "${taskPendingAction.name}"? It stays in this list as Archived. Reminders and submissions stop until you reactivate. Connected workers are notified.`
             : ""
         }
         confirmLabel={
-          taskPendingAction?.kind === "delete-auto" ||
-          taskPendingAction?.kind === "delete-human"
+          taskPendingAction?.kind === "delete-auto" || taskPendingAction?.kind === "delete-human"
             ? "Delete permanently"
             : "Archive"
         }
         cancelLabel="Cancel"
         variant={
-          taskPendingAction?.kind === "delete-auto" ||
-          taskPendingAction?.kind === "delete-human"
+          taskPendingAction?.kind === "delete-auto" || taskPendingAction?.kind === "delete-human"
             ? "destructive"
             : "default"
         }

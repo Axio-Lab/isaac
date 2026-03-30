@@ -16,18 +16,17 @@ import {
   Save,
   Users,
   Check,
+  ImagePlus,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { API_URL } from "@/lib/api-client";
 import type { HumanTask } from "@/hooks/useHumanTasks";
 import { useAiFillTask } from "@/hooks/useHumanTasks";
 import type { AutomatedTask } from "@/hooks/useAutomatedTasks";
 import type { TaskChannel } from "@/hooks/useTaskChannels";
-import type {
-  ComposioApp,
-  ComposioConnectedAccount,
-} from "@/hooks/useComposioConnections";
+import type { ComposioApp, ComposioConnectedAccount } from "@/hooks/useComposioConnections";
 import { useInitiateComposioConnection } from "@/hooks/useComposioConnections";
 import type { TaskFormData, DeliveryDestination, RequiredItemEntry } from "./constants";
 import {
@@ -86,19 +85,13 @@ const inputClass =
   "w-full px-3 py-2 border border-input rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 const selectTriggerClass = cn(
   inputClass,
-  "flex items-center justify-between gap-1.5 text-left font-normal",
+  "flex items-center justify-between gap-1.5 text-left font-normal"
 );
 const labelClass = "block text-[11px] font-medium text-muted-foreground mb-1";
 const sectionClass = "border-t border-border pt-3.5";
 const sectionTitle = "text-[11px] font-medium text-foreground mb-2.5";
 
-function TimezoneSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (tz: string) => void;
-}) {
+function TimezoneSelect({ value, onChange }: { value: string; onChange: (tz: string) => void }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -109,9 +102,7 @@ function TimezoneSelect({
     return allTz.filter((tz) => tz.toLowerCase().includes(q));
   }, [allTz, query]);
 
-  const displayValue = value
-    ? `${value} (${getTimezoneOffset(value)})`
-    : "Select timezone";
+  const displayValue = value ? `${value} (${getTimezoneOffset(value)})` : "Select timezone";
 
   return (
     <div className="relative">
@@ -139,9 +130,7 @@ function TimezoneSelect({
           </div>
           <div className="overflow-y-auto max-h-36">
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-[10px] text-muted-foreground">
-                No match
-              </p>
+              <p className="px-3 py-2 text-[10px] text-muted-foreground">No match</p>
             ) : (
               filtered.map((tz) => (
                 <button
@@ -153,15 +142,10 @@ function TimezoneSelect({
                     setQuery("");
                   }}
                   className={`w-full text-left px-3 py-1.5 text-[11px] hover:bg-muted transition-colors ${
-                    tz === value
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-foreground"
+                    tz === value ? "bg-primary/10 text-primary font-medium" : "text-foreground"
                   }`}
                 >
-                  {tz}{" "}
-                  <span className="text-muted-foreground">
-                    ({getTimezoneOffset(tz)})
-                  </span>
+                  {tz} <span className="text-muted-foreground">({getTimezoneOffset(tz)})</span>
                 </button>
               ))
             )}
@@ -190,9 +174,7 @@ function ConnectedAppsMultiSelect({
   const rows = useMemo(() => {
     return accounts.map((a) => {
       const slug = a.appName?.toLowerCase() ?? "";
-      const meta = composioAppCatalog.find(
-        (c) => c.slug.toLowerCase() === slug,
-      );
+      const meta = composioAppCatalog.find((c) => c.slug.toLowerCase() === slug);
       const label = meta?.name ?? a.appName?.trim() ?? "Unknown";
       return {
         id: a.id,
@@ -206,19 +188,13 @@ function ConnectedAppsMultiSelect({
   const filtered = useMemo(() => {
     if (!query.trim()) return rows;
     const q = query.toLowerCase();
-    return rows.filter(
-      (r) =>
-        r.label.toLowerCase().includes(q) || r.key.toLowerCase().includes(q),
-    );
+    return rows.filter((r) => r.label.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
   }, [rows, query]);
 
   useEffect(() => {
     if (!isOpen) return;
     function handlePointerDown(e: PointerEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setQuery("");
       }
@@ -275,9 +251,7 @@ function ConnectedAppsMultiSelect({
           </div>
           <div className="overflow-y-auto max-h-40 min-h-0">
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-[10px] text-muted-foreground">
-                No match
-              </p>
+              <p className="px-3 py-2 text-[10px] text-muted-foreground">No match</p>
             ) : (
               filtered.map((r) => {
                 const isOn = selected.includes(r.key);
@@ -326,48 +300,41 @@ function isComposioType(type: string): boolean {
   return type in COMPOSIO_DELIVERY_TYPES;
 }
 
-function isTypeConnected(
-  type: string,
-  accounts: ComposioConnectedAccount[],
-): boolean {
+function isTypeConnected(type: string, accounts: ComposioConnectedAccount[]): boolean {
   const slug = COMPOSIO_DELIVERY_TYPES[type];
   if (!slug) return true;
   return accounts.some(
-    (a) =>
-      a.appName?.toLowerCase() === slug.toLowerCase() &&
-      a.status === "ACTIVE",
+    (a) => a.appName?.toLowerCase() === slug.toLowerCase() && a.status === "ACTIVE"
   );
 }
 
-const DELIVERY_INPUT_CONFIG: Record<
-  string,
-  { label: string; placeholder: string; hint?: string }
-> = {
-  telegram: {
-    label: "Your Telegram Chat ID",
-    placeholder: "e.g. 123456789",
-    hint: "Send /start to @userinfobot on Telegram to get your Chat ID",
-  },
-  discord: {
-    label: "Your Discord User ID",
-    placeholder: "e.g. 812345678901234567",
-    hint: "Enable Developer Mode in Discord settings, then right-click your name → Copy User ID",
-  },
-  slack: {
-    label: "Your Slack Member ID",
-    placeholder: "e.g. U01AB2CDE3F",
-    hint: "Click your profile in Slack → ⋮ → Copy Member ID",
-  },
-  whatsapp: {
-    label: "Your WhatsApp Number",
-    placeholder: "+1234567890",
-    hint: "Include country code",
-  },
-  gmail: {
-    label: "Your Email Address",
-    placeholder: "you@example.com",
-  },
-};
+const DELIVERY_INPUT_CONFIG: Record<string, { label: string; placeholder: string; hint?: string }> =
+  {
+    telegram: {
+      label: "Your Telegram Chat ID",
+      placeholder: "e.g. 123456789",
+      hint: "Send /start to @userinfobot on Telegram to get your Chat ID",
+    },
+    discord: {
+      label: "Your Discord User ID",
+      placeholder: "e.g. 812345678901234567",
+      hint: "Enable Developer Mode in Discord settings, then right-click your name → Copy User ID",
+    },
+    slack: {
+      label: "Your Slack Member ID",
+      placeholder: "e.g. U01AB2CDE3F",
+      hint: "Click your profile in Slack → ⋮ → Copy Member ID",
+    },
+    whatsapp: {
+      label: "Your WhatsApp Number",
+      placeholder: "+1234567890",
+      hint: "Include country code",
+    },
+    gmail: {
+      label: "Your Email Address",
+      placeholder: "you@example.com",
+    },
+  };
 
 function DeliveryChannelPicker({
   dest,
@@ -390,14 +357,11 @@ function DeliveryChannelPicker({
       <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-warning/10 border border-warning/20">
         <AlertCircle className="h-3 w-3 text-warning shrink-0" />
         <p className="text-[10px] text-warning flex-1">
-          Connect {dest.type} via Connected Apps so Isaac can deliver reports to
-          your account.
+          Connect {dest.type} via Connected Apps so Isaac can deliver reports to your account.
         </p>
         <button
           type="button"
-          onClick={() =>
-            initiateConnection.mutate({ appSlug: composioSlug })
-          }
+          onClick={() => initiateConnection.mutate({ appSlug: composioSlug })}
           disabled={initiateConnection.isPending}
           className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-warning text-warning-foreground hover:bg-warning/90 transition-colors disabled:opacity-50"
         >
@@ -421,15 +385,11 @@ function DeliveryChannelPicker({
       <input
         type="text"
         value={dest.channelId}
-        onChange={(e) =>
-          onChange({ ...dest, channelId: e.target.value, channelName: "" })
-        }
+        onChange={(e) => onChange({ ...dest, channelId: e.target.value, channelName: "" })}
         className={inputClass}
         placeholder={config.placeholder}
       />
-      {config.hint && (
-        <p className="text-[10px] text-muted-foreground mt-1">{config.hint}</p>
-      )}
+      {config.hint && <p className="text-[10px] text-muted-foreground mt-1">{config.hint}</p>}
     </div>
   );
 }
@@ -461,8 +421,7 @@ export function TaskFormDialog({
   const formDirtyRef = useRef(false);
   const submittedRef = useRef(false);
 
-  const showScheduledTimes =
-    form.recurrenceType === "DAILY" || form.recurrenceType === "WEEKLY";
+  const showScheduledTimes = form.recurrenceType === "DAILY" || form.recurrenceType === "WEEKLY";
   const showInterval = form.recurrenceType === "CUSTOM";
 
   const DOC_TYPE_COMPOSIO_SLUG: Record<string, string> = {
@@ -474,8 +433,7 @@ export function TaskFormDialog({
     const slug = DOC_TYPE_COMPOSIO_SLUG[form.reportDocType];
     if (!slug) return true;
     return connectedAccounts.some(
-      (a) =>
-        a.appName?.toLowerCase() === slug.toLowerCase() && a.status === "ACTIVE",
+      (a) => a.appName?.toLowerCase() === slug.toLowerCase() && a.status === "ACTIVE"
     );
   }, [form.reportDocType, connectedAccounts]);
 
@@ -487,14 +445,12 @@ export function TaskFormDialog({
         label: `${ch.label || ch.id} (${ch.platform})`,
       })),
     ],
-    [channels],
+    [channels]
   );
 
   const dest = form.deliveryDestination;
   const destNeedsComposio =
-    !isAutomated &&
-    isComposioType(dest.type) &&
-    !isTypeConnected(dest.type, connectedAccounts);
+    !isAutomated && isComposioType(dest.type) && !isTypeConnected(dest.type, connectedAccounts);
 
   useEffect(() => {
     formDirtyRef.current = form.name.trim().length > 0;
@@ -513,12 +469,7 @@ export function TaskFormDialog({
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
-      if (
-        !nextOpen &&
-        !submittedRef.current &&
-        formDirtyRef.current &&
-        !isEditing
-      ) {
+      if (!nextOpen && !submittedRef.current && formDirtyRef.current && !isEditing) {
         try {
           localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
           toast.info("Draft saved — you can pick up where you left off");
@@ -526,7 +477,7 @@ export function TaskFormDialog({
       }
       onOpenChange(nextOpen);
     },
-    [form, isEditing, onOpenChange],
+    [form, isEditing, onOpenChange]
   );
 
   function handleFormSubmit(e: React.FormEvent) {
@@ -551,9 +502,7 @@ export function TaskFormDialog({
       prompt: aiPrompt.trim(),
       taskType: isAutomated ? "AUTOMATED" : "HUMAN",
       connectedAppNames: isAutomated
-        ? connectedAccounts
-            .map((a) => a.appName?.toUpperCase())
-            .filter(Boolean)
+        ? connectedAccounts.map((a) => a.appName?.toUpperCase()).filter(Boolean)
         : undefined,
     });
     if (result.fields && Object.keys(result.fields).length > 0) {
@@ -562,18 +511,15 @@ export function TaskFormDialog({
         const parsed = (fields.connectSuggestions as unknown[])
           .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
           .map((x) => ({
-            app:
-              typeof x.app === "string"
-                ? x.app.toUpperCase().trim()
-                : "",
-            reason:
-              typeof x.reason === "string" ? x.reason.trim() : "",
+            app: typeof x.app === "string" ? x.app.toUpperCase().trim() : "",
+            reason: typeof x.reason === "string" ? x.reason.trim() : "",
           }))
           .filter((x) => x.app.length > 0);
         setAiConnectSuggestions(parsed);
         if (parsed.length > 0) {
           toast.message("Isaac suggested apps to connect", {
-            description: "See the note under Connected Apps — you can add them in Connected Apps, then re-run prefill if you like.",
+            description:
+              "See the note under Connected Apps — you can add them in Connected Apps, then re-run prefill if you like.",
           });
         }
       } else {
@@ -584,14 +530,11 @@ export function TaskFormDialog({
         const merged = { ...f };
         if (isAutomated) {
           if (typeof fields.name === "string") merged.name = fields.name;
-          if (typeof fields.description === "string")
-            merged.description = fields.description;
+          if (typeof fields.description === "string") merged.description = fields.description;
           if (typeof fields.prompt === "string") merged.prompt = fields.prompt;
           if (Array.isArray(fields.composioApps)) {
             const allowed = new Set(
-              connectedAccounts
-                .map((a) => a.appName?.toUpperCase())
-                .filter(Boolean) as string[],
+              connectedAccounts.map((a) => a.appName?.toUpperCase()).filter(Boolean) as string[]
             );
             const picked = (fields.composioApps as string[])
               .map((a) => String(a).toUpperCase())
@@ -603,27 +546,19 @@ export function TaskFormDialog({
           if (typeof fields.recurrenceInterval === "number")
             merged.recurrenceInterval = fields.recurrenceInterval;
           if (Array.isArray(fields.scheduledTimes))
-            merged.scheduledTimes = (fields.scheduledTimes as string[]).join(
-              ", ",
-            );
-          if (typeof fields.timezone === "string")
-            merged.timezone = fields.timezone;
+            merged.scheduledTimes = (fields.scheduledTimes as string[]).join(", ");
+          if (typeof fields.timezone === "string") merged.timezone = fields.timezone;
         } else {
           if (typeof fields.name === "string") merged.name = fields.name;
-          if (typeof fields.description === "string")
-            merged.description = fields.description;
-          if (typeof fields.evidenceType === "string")
-            merged.evidenceType = fields.evidenceType;
+          if (typeof fields.description === "string") merged.description = fields.description;
+          if (typeof fields.evidenceType === "string") merged.evidenceType = fields.evidenceType;
           if (typeof fields.recurrenceType === "string")
             merged.recurrenceType = fields.recurrenceType;
           if (typeof fields.recurrenceInterval === "number")
             merged.recurrenceInterval = fields.recurrenceInterval;
           if (Array.isArray(fields.scheduledTimes))
-            merged.scheduledTimes = (fields.scheduledTimes as string[]).join(
-              ", ",
-            );
-          if (typeof fields.timezone === "string")
-            merged.timezone = fields.timezone;
+            merged.scheduledTimes = (fields.scheduledTimes as string[]).join(", ");
+          if (typeof fields.timezone === "string") merged.timezone = fields.timezone;
           if (Array.isArray(fields.acceptanceRules))
             merged.acceptanceRules =
               (fields.acceptanceRules as string[]).length > 0
@@ -633,16 +568,12 @@ export function TaskFormDialog({
             merged.requiredItems = fields.requiredItems as RequiredItemEntry[];
           if (typeof fields.scoringEnabled === "boolean")
             merged.scoringEnabled = fields.scoringEnabled;
-          if (typeof fields.passingScore === "number")
-            merged.passingScore = fields.passingScore;
-          if (typeof fields.graceMinutes === "number")
-            merged.graceMinutes = fields.graceMinutes;
+          if (typeof fields.passingScore === "number") merged.passingScore = fields.passingScore;
+          if (typeof fields.graceMinutes === "number") merged.graceMinutes = fields.graceMinutes;
           if (typeof fields.resubmissionAllowed === "boolean")
             merged.resubmissionAllowed = fields.resubmissionAllowed;
-          if (typeof fields.reportTime === "string")
-            merged.reportTime = fields.reportTime;
-          if (typeof fields.reportDocType === "string")
-            merged.reportDocType = fields.reportDocType;
+          if (typeof fields.reportTime === "string") merged.reportTime = fields.reportTime;
+          if (typeof fields.reportDocType === "string") merged.reportDocType = fields.reportDocType;
         }
         return merged;
       });
@@ -664,9 +595,7 @@ export function TaskFormDialog({
   function updateAcceptanceRule(index: number, value: string) {
     setForm((f) => ({
       ...f,
-      acceptanceRules: f.acceptanceRules.map((r, i) =>
-        i === index ? value : r,
-      ),
+      acceptanceRules: f.acceptanceRules.map((r, i) => (i === index ? value : r)),
     }));
   }
 
@@ -691,16 +620,31 @@ export function TaskFormDialog({
     }));
   }
 
-  async function uploadReferenceFile(index: number, file: File) {
+  async function uploadFile(file: File): Promise<string | null> {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await fetch("/api/uploads", { method: "POST", body: fd });
+      const res = await fetch(`${API_URL}/api/uploads`, { method: "POST", body: fd });
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
-      updateRequiredItem(index, { referenceUrl: data.url });
+      return `${API_URL}${data.url}`;
     } catch {
-      toast.error("Failed to upload reference image");
+      toast.error("Failed to upload file");
+      return null;
+    }
+  }
+
+  async function uploadReferenceFile(index: number, file: File) {
+    const url = await uploadFile(file);
+    if (url) {
+      updateRequiredItem(index, { referenceUrl: url });
+    }
+  }
+
+  async function uploadSingleReference(file: File) {
+    const url = await uploadFile(file);
+    if (url) {
+      setForm((f) => ({ ...f, sampleEvidenceUrl: url }));
     }
   }
 
@@ -726,7 +670,9 @@ export function TaskFormDialog({
           <div className="flex items-center justify-between mb-5">
             <Dialog.Title className="text-sm font-semibold text-foreground">
               {isEditing
-                ? (editingTask?.status === "DRAFT" ? "Complete Draft" : "Edit Task")
+                ? editingTask?.status === "DRAFT"
+                  ? "Complete Draft"
+                  : "Edit Task"
                 : "Create Task"}
             </Dialog.Title>
             <Dialog.Close asChild>
@@ -827,9 +773,7 @@ export function TaskFormDialog({
               <input
                 type="text"
                 value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputClass}
                 required
               />
@@ -839,9 +783,7 @@ export function TaskFormDialog({
               <label className={labelClass}>Description</label>
               <textarea
                 value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 className={`${inputClass} resize-none`}
                 rows={2}
               />
@@ -854,16 +796,15 @@ export function TaskFormDialog({
                   <label className={labelClass}>Prompt *</label>
                   <textarea
                     value={form.prompt}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, prompt: e.target.value }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, prompt: e.target.value }))}
                     className={`${inputClass} resize-none`}
                     rows={4}
                     placeholder="e.g. Check my Gmail inbox and summarize all emails from yesterday"
                     required
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Tell Isaac what to do. Use integrations only when the task needs them; many automations need no connected apps.
+                    Tell Isaac what to do. Use integrations only when the task needs them; many
+                    automations need no connected apps.
                   </p>
                 </div>
 
@@ -872,21 +813,21 @@ export function TaskFormDialog({
                   <div className="mt-1">
                     {connectedAccounts.length === 0 ? (
                       <p className="text-[10px] text-muted-foreground">
-                        None connected yet. Use prefill above — Isaac can suggest which to add in Connected Apps, or leave empty if the task doesn&apos;t need tools.
+                        None connected yet. Use prefill above — Isaac can suggest which to add in
+                        Connected Apps, or leave empty if the task doesn&apos;t need tools.
                       </p>
                     ) : (
                       <ConnectedAppsMultiSelect
                         accounts={connectedAccounts}
                         composioAppCatalog={composioAppCatalog}
                         selected={form.composioApps}
-                        onChange={(apps) =>
-                          setForm((f) => ({ ...f, composioApps: apps }))
-                        }
+                        onChange={(apps) => setForm((f) => ({ ...f, composioApps: apps }))}
                       />
                     )}
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-2">
-                    Select only apps this run should call. Leave none selected if the prompt doesn&apos;t need external APIs.
+                    Select only apps this run should call. Leave none selected if the prompt
+                    doesn&apos;t need external APIs.
                   </p>
                   {aiConnectSuggestions.length > 0 && (
                     <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
@@ -895,10 +836,7 @@ export function TaskFormDialog({
                       </p>
                       <ul className="space-y-1 mb-2">
                         {aiConnectSuggestions.map(({ app, reason }) => (
-                          <li
-                            key={app}
-                            className="text-[10px] text-muted-foreground leading-snug"
-                          >
+                          <li key={app} className="text-[10px] text-muted-foreground leading-snug">
                             <span className="font-medium text-foreground">{app}</span>
                             {reason ? ` — ${reason}` : null}
                           </li>
@@ -919,412 +857,543 @@ export function TaskFormDialog({
 
             {/* ── Section 2: Channel (human only) ── */}
             {!isAutomated && (
-            <div>
-              <TaskSelectDropdown
-                label="Notification Channel"
-                value={form.taskChannelId}
-                onChange={(v) =>
-                  setForm((f) => ({ ...f, taskChannelId: v }))
-                }
-                options={notificationChannelOptions}
-                ariaLabel="Select notification channel"
-                labelClassName={labelClass}
-                buttonClassName={selectTriggerClass}
-                required
-                disabled={channels.length === 0}
-                contentZIndexClass="z-[200]"
-              />
-              {channels.length === 0 && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  No channels configured. Add one in Channels first.
-                </p>
-              )}
-            </div>
+              <div>
+                <TaskSelectDropdown
+                  label="Notification Channel"
+                  value={form.taskChannelId}
+                  onChange={(v) => setForm((f) => ({ ...f, taskChannelId: v }))}
+                  options={notificationChannelOptions}
+                  ariaLabel="Select notification channel"
+                  labelClassName={labelClass}
+                  buttonClassName={selectTriggerClass}
+                  required
+                  disabled={channels.length === 0}
+                  contentZIndexClass="z-[200]"
+                />
+                {channels.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    No channels configured. Add one in Channels first.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* ── Section 3: Evidence & Schedule (human) / Schedule (automated) ── */}
             {!isAutomated ? (
-            <div className={sectionClass}>
-              <p className={sectionTitle}>Evidence & Schedule</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <TaskSelectDropdown
-                    label="Evidence Type"
-                    value={form.evidenceType}
-                    onChange={(v) =>
-                      setForm((f) => ({ ...f, evidenceType: v }))
-                    }
-                    options={EVIDENCE_SELECT_OPTIONS}
-                    ariaLabel="Evidence type"
-                    labelClassName={labelClass}
-                    buttonClassName={selectTriggerClass}
-                    contentZIndexClass="z-[200]"
-                  />
+              <div className={sectionClass}>
+                <p className={sectionTitle}>Evidence & Schedule</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <TaskSelectDropdown
+                      label="Evidence Type"
+                      value={form.evidenceType}
+                      onChange={(v) => setForm((f) => ({ ...f, evidenceType: v }))}
+                      options={EVIDENCE_SELECT_OPTIONS}
+                      ariaLabel="Evidence type"
+                      labelClassName={labelClass}
+                      buttonClassName={selectTriggerClass}
+                      contentZIndexClass="z-[200]"
+                    />
+                  </div>
+                  <div>
+                    <TaskSelectDropdown
+                      label="Recurrence"
+                      value={form.recurrenceType}
+                      onChange={(v) => setForm((f) => ({ ...f, recurrenceType: v }))}
+                      options={RECURRENCE_SELECT_OPTIONS}
+                      ariaLabel="Recurrence"
+                      labelClassName={labelClass}
+                      buttonClassName={selectTriggerClass}
+                      contentZIndexClass="z-[200]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <TaskSelectDropdown
-                    label="Recurrence"
-                    value={form.recurrenceType}
-                    onChange={(v) =>
-                      setForm((f) => ({ ...f, recurrenceType: v }))
-                    }
-                    options={RECURRENCE_SELECT_OPTIONS}
-                    ariaLabel="Recurrence"
-                    labelClassName={labelClass}
-                    buttonClassName={selectTriggerClass}
-                    contentZIndexClass="z-[200]"
+
+                {showInterval && (
+                  <div className="mt-3">
+                    <label className={labelClass}>Interval (minutes) *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.recurrenceInterval}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          recurrenceInterval: Number(e.target.value),
+                        }))
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+
+                {showScheduledTimes && (
+                  <div className="mt-3">
+                    <label className={labelClass}>Scheduled Times * (comma-separated HH:MM)</label>
+                    <input
+                      type="text"
+                      value={form.scheduledTimes}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          scheduledTimes: e.target.value,
+                        }))
+                      }
+                      className={inputClass}
+                      placeholder="09:00, 17:00"
+                    />
+                  </div>
+                )}
+
+                <div className="mt-3">
+                  <label className={labelClass}>Timezone</label>
+                  <TimezoneSelect
+                    value={form.timezone}
+                    onChange={(tz) => setForm((f) => ({ ...f, timezone: tz }))}
                   />
                 </div>
               </div>
-
-              {showInterval && (
-                <div className="mt-3">
-                  <label className={labelClass}>Interval (minutes) *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.recurrenceInterval}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        recurrenceInterval: Number(e.target.value),
-                      }))
-                    }
-                    className={inputClass}
-                  />
-                </div>
-              )}
-
-              {showScheduledTimes && (
-                <div className="mt-3">
-                  <label className={labelClass}>
-                    Scheduled Times * (comma-separated HH:MM)
-                  </label>
+            ) : (
+              <div className={sectionClass}>
+                <p className={sectionTitle}>Schedule</p>
+                <div>
+                  <label className={labelClass}>Scheduled Times (comma-separated HH:MM)</label>
                   <input
                     type="text"
                     value={form.scheduledTimes}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        scheduledTimes: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, scheduledTimes: e.target.value }))}
                     className={inputClass}
-                    placeholder="09:00, 17:00"
+                    placeholder="07:00, 18:00"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Isaac will run this task at these times. Leave empty for on-demand only.
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <label className={labelClass}>Timezone</label>
+                  <TimezoneSelect
+                    value={form.timezone}
+                    onChange={(tz) => setForm((f) => ({ ...f, timezone: tz }))}
                   />
                 </div>
-              )}
-
-              <div className="mt-3">
-                <label className={labelClass}>Timezone</label>
-                <TimezoneSelect
-                  value={form.timezone}
-                  onChange={(tz) =>
-                    setForm((f) => ({ ...f, timezone: tz }))
-                  }
-                />
               </div>
-            </div>
-            ) : (
-            <div className={sectionClass}>
-              <p className={sectionTitle}>Schedule</p>
-              <div>
-                <label className={labelClass}>
-                  Scheduled Times (comma-separated HH:MM)
-                </label>
-                <input
-                  type="text"
-                  value={form.scheduledTimes}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, scheduledTimes: e.target.value }))
-                  }
-                  className={inputClass}
-                  placeholder="07:00, 18:00"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Isaac will run this task at these times. Leave empty for on-demand only.
-                </p>
-              </div>
-              <div className="mt-3">
-                <label className={labelClass}>Timezone</label>
-                <TimezoneSelect
-                  value={form.timezone}
-                  onChange={(tz) =>
-                    setForm((f) => ({ ...f, timezone: tz }))
-                  }
-                />
-              </div>
-            </div>
             )}
 
             {/* ── Section 4: Acceptance Rules (human only) ── */}
-            {!isAutomated && <div className={sectionClass}>
-              <div className="flex items-center justify-between mb-2.5">
-                <p className={sectionTitle}>Acceptance Rules *</p>
-                <button
-                  type="button"
-                  onClick={addAcceptanceRule}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-primary hover:bg-primary/10 transition-colors"
-                >
-                  <Plus className="h-2.5 w-2.5" /> Add
-                </button>
-              </div>
-              <div className="space-y-2">
-                {form.acceptanceRules.map((rule, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={rule}
-                      onChange={(e) =>
-                        updateAcceptanceRule(i, e.target.value)
-                      }
-                      className={`${inputClass} flex-1`}
-                      placeholder={`Rule ${i + 1}: e.g. "Photo must show timestamp"`}
-                    />
-                    {form.acceptanceRules.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeAcceptanceRule(i)}
-                        className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>}
-
-            {/* ── Section 4b: Required Evidence Items (human only, multi-item) ── */}
-            {!isAutomated && <div className={sectionClass}>
-              <div className="flex items-center justify-between mb-2.5">
-                <div>
-                  <p className={sectionTitle}>Required Evidence Items</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Leave empty for single-item submissions. Add items for multi-item (e.g. kitchen, bathroom).
-                  </p>
+            {!isAutomated && (
+              <div className={sectionClass}>
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className={sectionTitle}>Acceptance Rules *</p>
+                  <button
+                    type="button"
+                    onClick={addAcceptanceRule}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Plus className="h-2.5 w-2.5" /> Add
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={addRequiredItem}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-primary hover:bg-primary/10 transition-colors"
-                >
-                  <Plus className="h-2.5 w-2.5" /> Add item
-                </button>
-              </div>
-              {form.requiredItems.length > 0 && (
-                <div className="space-y-2.5">
-                  {form.requiredItems.map((item, i) => (
-                    <div key={i} className="rounded-lg border border-border p-2.5 space-y-2">
-                      <div className="flex gap-2 items-start">
-                        <input
-                          type="text"
-                          value={item.label}
-                          onChange={(e) => updateRequiredItem(i, { label: e.target.value })}
-                          className={`${inputClass} flex-1`}
-                          placeholder={`Item ${i + 1} label: e.g. "Kitchen"`}
-                        />
-                        <select
-                          value={item.evidenceType}
-                          onChange={(e) => updateRequiredItem(i, { evidenceType: e.target.value })}
-                          className={`${inputClass} w-24`}
-                        >
-                          {EVIDENCE_TYPES.map((t) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
+                <div className="space-y-2">
+                  {form.acceptanceRules.map((rule, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={rule}
+                        onChange={(e) => updateAcceptanceRule(i, e.target.value)}
+                        className={`${inputClass} flex-1`}
+                        placeholder={`Rule ${i + 1}: e.g. "Photo must show timestamp"`}
+                      />
+                      {form.acceptanceRules.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => removeRequiredItem(i)}
+                          onClick={() => removeAcceptanceRule(i)}
                           className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors shrink-0"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-[10px] text-muted-foreground shrink-0">Reference:</label>
-                        {item.referenceUrl ? (
-                          <div className="flex items-center gap-2">
-                            <img src={item.referenceUrl} alt="Reference" className="h-8 w-8 rounded object-cover border border-border" />
-                            <button
-                              type="button"
-                              onClick={() => updateRequiredItem(i, { referenceUrl: undefined })}
-                              className="text-[10px] text-destructive hover:underline"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ) : (
-                          <input
-                            type="file"
-                            accept="image/*,video/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) uploadReferenceFile(i, file);
-                            }}
-                            className="text-[10px] text-muted-foreground"
-                          />
-                        )}
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
-              )}
-            </div>}
+              </div>
+            )}
+
+            {/* ── Section 4b: Submission Mode + Reference Evidence ── */}
+            {!isAutomated && (
+              <div className={sectionClass}>
+                <p className={sectionTitle}>Submission Mode</p>
+                <div className="flex gap-2 mt-1.5 mb-3">
+                  {(["single", "multi"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, submissionMode: mode }))}
+                      className={cn(
+                        "flex-1 rounded-lg border px-3 py-2 text-[11px] font-medium transition-colors",
+                        form.submissionMode === mode
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-muted/40"
+                      )}
+                    >
+                      {mode === "single" ? "Single submission" : "Multi-item submission"}
+                    </button>
+                  ))}
+                </div>
+
+                {form.submissionMode === "single" && (
+                  <div>
+                    <label className={labelClass}>Reference sample (optional)</label>
+                    <p className="text-[10px] text-muted-foreground mb-1.5">
+                      Upload a sample of what a correct submission looks like. Isaac uses this to
+                      compare against worker evidence.
+                    </p>
+                    {form.sampleEvidenceUrl ? (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={form.sampleEvidenceUrl}
+                          alt="Reference sample"
+                          className="h-16 w-16 rounded-lg object-cover border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, sampleEvidenceUrl: "" }))}
+                          className="text-[10px] text-destructive hover:underline"
+                        >
+                          Remove reference
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2.5">
+                        <p className="text-[10px] text-muted-foreground mb-2 leading-relaxed">
+                          Choose an image or video file from your device — not a name field. This
+                          becomes the visual example Isaac compares to worker uploads.
+                        </p>
+                        <label className="inline-flex cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            className="sr-only"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) uploadSingleReference(file);
+                              e.target.value = "";
+                            }}
+                          />
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/60 transition-colors">
+                            <ImagePlus className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                            Upload reference file
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {form.submissionMode === "multi" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-[11px] font-medium text-foreground">
+                          Required evidence items
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Workers submit each item sequentially. Isaac guides them through the list.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addRequiredItem}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <Plus className="h-2.5 w-2.5" /> Add
+                      </button>
+                    </div>
+                    {form.requiredItems.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {form.requiredItems.map((item, i) => {
+                          const itemLabelId = `required-item-name-${i}`;
+                          const itemTypeId = `required-item-type-${i}`;
+                          const displayName = item.label.trim() || `Item ${i + 1}`;
+                          return (
+                            <div
+                              key={i}
+                              className="rounded-lg border border-border p-3 space-y-3 bg-card/30"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Step {i + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeRequiredItem(i)}
+                                  className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                                  aria-label={`Remove ${displayName}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label htmlFor={itemLabelId} className={labelClass}>
+                                  Name this item (reference name)
+                                </label>
+                                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                  This is the label workers see in chat and how this step is
+                                  identified. The optional file you add below is tied to this name —
+                                  edit it anytime to rename what this reference represents.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                                  <input
+                                    id={itemLabelId}
+                                    type="text"
+                                    value={item.label}
+                                    onChange={(e) =>
+                                      updateRequiredItem(i, { label: e.target.value })
+                                    }
+                                    className={`${inputClass} flex-1 min-w-0`}
+                                    placeholder='e.g. "Kitchen", "Front entrance photo"'
+                                    autoComplete="off"
+                                  />
+                                  <div className="flex flex-col gap-1 shrink-0 sm:w-30">
+                                    <label
+                                      htmlFor={itemTypeId}
+                                      className="text-[10px] font-medium text-muted-foreground"
+                                    >
+                                      Type
+                                    </label>
+                                    <select
+                                      id={itemTypeId}
+                                      value={item.evidenceType}
+                                      onChange={(e) =>
+                                        updateRequiredItem(i, { evidenceType: e.target.value })
+                                      }
+                                      className={inputClass}
+                                    >
+                                      {EVIDENCE_TYPES.map((t) => (
+                                        <option key={t} value={t}>
+                                          {t}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="rounded-md border border-dashed border-border bg-muted/15 px-2.5 py-2.5 space-y-2">
+                                <p className="text-[10px] font-medium text-foreground">
+                                  Reference sample file (optional)
+                                </p>
+                                {item.referenceUrl ? (
+                                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                    <img
+                                      src={item.referenceUrl}
+                                      alt={`Sample for ${displayName}`}
+                                      className="h-10 w-10 rounded-md object-cover border border-border"
+                                    />
+                                    <span className="text-[10px] text-muted-foreground">
+                                      Sample linked to{" "}
+                                      <span className="font-medium text-foreground">
+                                        {displayName}
+                                      </span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateRequiredItem(i, { referenceUrl: undefined })
+                                      }
+                                      className="text-[10px] text-destructive hover:underline"
+                                    >
+                                      Remove file
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className="inline-flex cursor-pointer">
+                                    <input
+                                      type="file"
+                                      accept="image/*,video/*"
+                                      className="sr-only"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) uploadReferenceFile(i, file);
+                                        e.target.value = "";
+                                      }}
+                                    />
+                                    <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/60 transition-colors">
+                                      <ImagePlus
+                                        className="h-3.5 w-3.5 text-muted-foreground"
+                                        aria-hidden
+                                      />
+                                      Add sample for {displayName}
+                                    </span>
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic py-2">
+                        No items added yet. Click &quot;Add&quot; to define what workers need to
+                        submit.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Section 5: Scoring (human only) ── */}
-            {!isAutomated && <div className={sectionClass}>
-              <p className={sectionTitle}>Scoring</p>
+            {!isAutomated && (
+              <div className={sectionClass}>
+                <p className={sectionTitle}>Scoring</p>
 
-              <div className="flex items-center justify-between py-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
-                  Scoring Enabled
-                </label>
-                <SwitchPrimitive.Root
-                  checked={form.scoringEnabled}
-                  onCheckedChange={(v) =>
-                    setForm((f) => ({ ...f, scoringEnabled: v }))
-                  }
-                  className="w-9 h-5 bg-muted rounded-full relative data-[state=checked]:bg-primary transition-colors"
-                >
-                  <SwitchPrimitive.Thumb className="block w-3.5 h-3.5 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
-                </SwitchPrimitive.Root>
-              </div>
-
-              {form.scoringEnabled && (
-                <div className="space-y-3 mt-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>
-                        Passing Score (0-100)
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={form.passingScore}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            passingScore: Number(e.target.value),
-                          }))
-                        }
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Grace Minutes</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={form.graceMinutes}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            graceMinutes: Number(e.target.value),
-                          }))
-                        }
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between py-1">
-                    <label className="text-[11px] font-medium text-muted-foreground">
-                      Resubmission Allowed
-                    </label>
-                    <SwitchPrimitive.Root
-                      checked={form.resubmissionAllowed}
-                      onCheckedChange={(v) =>
-                        setForm((f) => ({ ...f, resubmissionAllowed: v }))
-                      }
-                      className="w-9 h-5 bg-muted rounded-full relative data-[state=checked]:bg-primary transition-colors"
-                    >
-                      <SwitchPrimitive.Thumb className="block w-3.5 h-3.5 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
-                    </SwitchPrimitive.Root>
-                  </div>
+                <div className="flex items-center justify-between py-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">
+                    Scoring Enabled
+                  </label>
+                  <SwitchPrimitive.Root
+                    checked={form.scoringEnabled}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, scoringEnabled: v }))}
+                    className="w-9 h-5 bg-muted rounded-full relative data-[state=checked]:bg-primary transition-colors"
+                  >
+                    <SwitchPrimitive.Thumb className="block w-3.5 h-3.5 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
+                  </SwitchPrimitive.Root>
                 </div>
-              )}
-            </div>}
+
+                {form.scoringEnabled && (
+                  <div className="space-y-3 mt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Passing Score (0-100)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={form.passingScore}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              passingScore: Number(e.target.value),
+                            }))
+                          }
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Grace Minutes</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={form.graceMinutes}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              graceMinutes: Number(e.target.value),
+                            }))
+                          }
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between py-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">
+                        Resubmission Allowed
+                      </label>
+                      <SwitchPrimitive.Root
+                        checked={form.resubmissionAllowed}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, resubmissionAllowed: v }))}
+                        className="w-9 h-5 bg-muted rounded-full relative data-[state=checked]:bg-primary transition-colors"
+                      >
+                        <SwitchPrimitive.Thumb className="block w-3.5 h-3.5 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
+                      </SwitchPrimitive.Root>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Section 6: Report & Delivery ── */}
             <div className={sectionClass}>
               <p className={sectionTitle}>{isAutomated ? "Delivery" : "Report & Delivery"}</p>
 
               {!isAutomated && (
-              <>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelClass}>Report Time (HH:MM)</label>
-                  <input
-                    type="text"
-                    value={form.reportTime}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, reportTime: e.target.value }))
-                    }
-                    className={inputClass}
-                    placeholder="18:00"
-                  />
-                </div>
-                <div>
-                  <TaskSelectDropdown
-                    label="Document Type"
-                    value={form.reportDocType}
-                    onChange={(v) =>
-                      setForm((f) => ({ ...f, reportDocType: v }))
-                    }
-                    options={REPORT_DOC_SELECT_OPTIONS}
-                    ariaLabel="Report document type"
-                    labelClassName={labelClass}
-                    buttonClassName={selectTriggerClass}
-                    contentZIndexClass="z-[200]"
-                  />
-                  {form.reportDocType && form.reportDocType !== "none" && (() => {
-                    const slug = form.reportDocType === "googledocs" ? "googledocs" : "notion";
-                    const connected = connectedAccounts.some(
-                      (a) => a.appName?.toLowerCase() === slug.toLowerCase() && a.status === "ACTIVE"
-                    );
-                    if (!connected) {
-                      return (
-                        <p className="text-[10px] text-destructive mt-1">
-                          Connect {form.reportDocType === "googledocs" ? "Google Docs" : "Notion"} in{" "}
-                          <Link href="/connected-apps" className="underline">Connected Apps</Link>{" "}
-                          before generating reports.
-                        </p>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Report Time (HH:MM)</label>
+                      <input
+                        type="text"
+                        value={form.reportTime}
+                        onChange={(e) => setForm((f) => ({ ...f, reportTime: e.target.value }))}
+                        className={inputClass}
+                        placeholder="18:00"
+                      />
+                    </div>
+                    <div>
+                      <TaskSelectDropdown
+                        label="Document Type"
+                        value={form.reportDocType}
+                        onChange={(v) => setForm((f) => ({ ...f, reportDocType: v }))}
+                        options={REPORT_DOC_SELECT_OPTIONS}
+                        ariaLabel="Report document type"
+                        labelClassName={labelClass}
+                        buttonClassName={selectTriggerClass}
+                        contentZIndexClass="z-[200]"
+                      />
+                      {form.reportDocType &&
+                        form.reportDocType !== "none" &&
+                        (() => {
+                          const slug =
+                            form.reportDocType === "googledocs" ? "googledocs" : "notion";
+                          const connected = connectedAccounts.some(
+                            (a) =>
+                              a.appName?.toLowerCase() === slug.toLowerCase() &&
+                              a.status === "ACTIVE"
+                          );
+                          if (!connected) {
+                            return (
+                              <p className="text-[10px] text-destructive mt-1">
+                                Connect{" "}
+                                {form.reportDocType === "googledocs" ? "Google Docs" : "Notion"} in{" "}
+                                <Link href="/connected-apps" className="underline">
+                                  Connected Apps
+                                </Link>{" "}
+                                before generating reports.
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                    </div>
+                  </div>
 
-              {form.reportDocType !== "none" && (
-              <div className="mt-3">
-                <label className={labelClass}>Folder ID (optional)</label>
-                <input
-                  type="text"
-                  value={form.reportFolderId}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      reportFolderId: e.target.value,
-                    }))
-                  }
-                  className={inputClass}
-                  placeholder="Drive or Notion folder ID"
-                />
-              </div>
-              )}
-              </>
+                  {form.reportDocType !== "none" && (
+                    <div className="mt-3">
+                      <label className={labelClass}>Folder ID (optional)</label>
+                      <input
+                        type="text"
+                        value={form.reportFolderId}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            reportFolderId: e.target.value,
+                          }))
+                        }
+                        className={inputClass}
+                        placeholder="Drive or Notion folder ID"
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               {/* ── Delivery Destination ── */}
               <div className={isAutomated ? "" : "mt-4"}>
-                <p className="text-[11px] font-medium text-foreground mb-2">
-                  Delivery Destination
-                </p>
+                <p className="text-[11px] font-medium text-foreground mb-2">Delivery Destination</p>
                 <p className="text-[10px] text-muted-foreground mb-2.5">
-                  Where Isaac sends a report summary when generated. Leave as None for report page only.
+                  Where Isaac sends a report summary when generated. Leave as None for report page
+                  only.
                 </p>
 
                 <div>
@@ -1357,8 +1426,8 @@ export function TaskFormDialog({
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20">
                 <AlertCircle className="h-3 w-3 text-destructive shrink-0" />
                 <p className="text-[10px] text-destructive">
-                  Connect the delivery platform before creating this task. You
-                  can save it as a draft in the meantime.
+                  Connect the delivery platform before creating this task. You can save it as a
+                  draft in the meantime.
                 </p>
               </div>
             )}
@@ -1377,12 +1446,7 @@ export function TaskFormDialog({
                 <button
                   type="button"
                   onClick={handleDraftSave}
-                  disabled={
-                    draftPending ||
-                    createPending ||
-                    updatePending ||
-                    !form.name.trim()
-                  }
+                  disabled={draftPending || createPending || updatePending || !form.name.trim()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                 >
                   {draftPending ? (
@@ -1396,18 +1460,15 @@ export function TaskFormDialog({
               <button
                 type="submit"
                 disabled={
-                  createPending || updatePending || destNeedsComposio || (!isAutomated && !docTypeConnected)
+                  createPending ||
+                  updatePending ||
+                  destNeedsComposio ||
+                  (!isAutomated && !docTypeConnected)
                 }
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {(createPending || updatePending) && (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                )}
-                {editingTask
-                  ? editingTask.status === "DRAFT"
-                    ? "Activate"
-                    : "Update"
-                  : "Create"}
+                {(createPending || updatePending) && <Loader2 className="h-3 w-3 animate-spin" />}
+                {editingTask ? (editingTask.status === "DRAFT" ? "Activate" : "Update") : "Create"}
               </button>
             </div>
           </form>

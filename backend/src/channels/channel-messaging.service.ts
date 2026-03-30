@@ -15,13 +15,10 @@ export class ChannelMessagingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly whatsappService: WhatsAppService,
+    private readonly whatsappService: WhatsAppService
   ) {}
 
-  async sendToWorker(
-    workerId: string,
-    text: string,
-  ): Promise<SendResult> {
+  async sendToWorker(workerId: string, text: string): Promise<SendResult> {
     const worker = await (this.prisma as any).humanWorker.findUnique({
       where: { id: workerId },
       include: { taskChannel: true },
@@ -29,19 +26,14 @@ export class ChannelMessagingService {
     if (!worker) return { success: false, error: "Worker not found" };
     if (!worker.taskChannel) return { success: false, error: "No channel bound to worker" };
 
-    return this.sendViaChannel(
-      worker.taskChannel,
-      worker.externalId,
-      worker.platform,
-      text,
-    );
+    return this.sendViaChannel(worker.taskChannel, worker.externalId, worker.platform, text);
   }
 
   async sendViaChannel(
     channel: any,
     recipientId: string,
     platform: string,
-    text: string,
+    text: string
   ): Promise<SendResult> {
     try {
       switch (platform.toUpperCase()) {
@@ -62,10 +54,7 @@ export class ChannelMessagingService {
     }
   }
 
-  async broadcastToTask(
-    taskId: string,
-    text: string,
-  ): Promise<{ sent: number; failed: number }> {
+  async broadcastToTask(taskId: string, text: string): Promise<{ sent: number; failed: number }> {
     const workers = await (this.prisma as any).humanWorker.findMany({
       where: { humanTaskId: taskId, status: "ACTIVE" },
     });

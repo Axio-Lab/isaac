@@ -19,7 +19,11 @@ import type { HumanTask } from "@/hooks/useHumanTasks";
 import { PlatformChannelIcon } from "@/lib/channel-icons";
 import { statusColor, formatEvidenceTypeLabel, formatTimeHm } from "./utils";
 
-const SEP = <span className="text-border" aria-hidden>·</span>;
+const SEP = (
+  <span className="text-border" aria-hidden>
+    ·
+  </span>
+);
 
 interface TaskCardProps {
   task: HumanTask;
@@ -97,9 +101,13 @@ export function TaskCard({
                     onSelect={() => onPauseResume(task)}
                   >
                     {task.status === "ACTIVE" ? (
-                      <><Pause className="h-3 w-3" /> Pause</>
+                      <>
+                        <Pause className="h-3 w-3" /> Pause
+                      </>
                     ) : (
-                      <><Play className="h-3 w-3" /> Resume</>
+                      <>
+                        <Play className="h-3 w-3" /> Resume
+                      </>
                     )}
                   </DropdownMenu.Item>
                 )}
@@ -186,9 +194,7 @@ export function TaskCard({
         {SEP}
         <span>{task.recurrenceType}</span>
         {SEP}
-        <span className="hidden sm:inline">
-          {new Date(task.updatedAt).toLocaleDateString()}
-        </span>
+        <span className="hidden sm:inline">{new Date(task.updatedAt).toLocaleDateString()}</span>
       </div>
     </div>
   );

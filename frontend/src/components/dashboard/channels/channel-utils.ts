@@ -95,9 +95,7 @@ export function formFromChannel(channel: TaskChannel): ChannelFormData {
  * Build the PUT body for updating an existing channel.
  * Only sends fields that were actually changed (non-empty).
  */
-export function toChannelUpdatePayload(
-  form: ChannelFormData,
-): Record<string, unknown> {
+export function toChannelUpdatePayload(form: ChannelFormData): Record<string, unknown> {
   const data: Record<string, unknown> = { label: form.label.trim() };
 
   if (form.platform === "TELEGRAM" && form.botToken.trim()) {

@@ -22,22 +22,18 @@ export class SkillsController {
   constructor(private readonly skillsService: SkillsService) {}
 
   @Get()
-  async listSkills(
-    @Req() req: any,
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-  ) {
+  async listSkills(@Req() req: any, @Query("page") page?: string, @Query("limit") limit?: string) {
     return this.skillsService.getSkills(
       req.userId,
       page ? parseInt(page, 10) : undefined,
-      limit ? parseInt(limit, 10) : undefined,
+      limit ? parseInt(limit, 10) : undefined
     );
   }
 
   @Post()
   async createSkill(
     @Req() req: any,
-    @Body() body: { name: string; description?: string; url?: string; content?: string },
+    @Body() body: { name: string; description?: string; url?: string; content?: string }
   ) {
     return this.skillsService.createSkill({
       userId: req.userId,
@@ -54,7 +50,7 @@ export class SkillsController {
   async updateSkill(
     @Req() req: any,
     @Param("id") id: string,
-    @Body() body: Partial<{ name: string; description: string; url: string; content: string }>,
+    @Body() body: Partial<{ name: string; description: string; url: string; content: string }>
   ) {
     return this.skillsService.updateSkill(req.userId, id, body);
   }

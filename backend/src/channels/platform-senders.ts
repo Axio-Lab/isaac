@@ -19,7 +19,7 @@ export interface SendResult {
 export async function sendTelegram(
   botToken: string | null | undefined,
   chatId: string,
-  text: string,
+  text: string
 ): Promise<SendResult> {
   if (!botToken?.trim()) {
     return { success: false, error: "No Telegram bot token" };
@@ -44,7 +44,7 @@ export async function sendWhatsApp(
   whatsappService: WhatsAppService,
   channelId: string,
   jidOrPhone: string,
-  text: string,
+  text: string
 ): Promise<SendResult> {
   try {
     const jid = jidOrPhone.includes("@")
@@ -62,7 +62,7 @@ export async function sendWhatsApp(
 export async function sendDiscord(
   botToken: string | null | undefined,
   userId: string,
-  text: string,
+  text: string
 ): Promise<SendResult> {
   if (!botToken?.trim()) {
     return { success: false, error: "No Discord bot token" };
@@ -84,17 +84,14 @@ export async function sendDiscord(
   }
   const dmChannel = (await dmRes.json()) as { id: string };
 
-  const msgRes = await fetch(
-    `https://discord.com/api/v10/channels/${dmChannel.id}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bot ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ content: text }),
+  const msgRes = await fetch(`https://discord.com/api/v10/channels/${dmChannel.id}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({ content: text }),
+  });
   if (!msgRes.ok) {
     const body = await msgRes.text();
     logger.error(`Discord sendMessage failed: ${msgRes.status} ${body}`);
@@ -108,7 +105,7 @@ export async function sendDiscord(
 export async function sendSlack(
   botToken: string | null | undefined,
   recipientId: string,
-  text: string,
+  text: string
 ): Promise<SendResult> {
   if (!botToken?.trim()) {
     return { success: false, error: "No Slack bot token" };

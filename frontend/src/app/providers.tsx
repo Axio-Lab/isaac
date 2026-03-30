@@ -2,13 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Theme = "dark" | "light";
 
@@ -37,7 +31,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: { staleTime: 30_000, retry: 1 },
         },
-      }),
+      })
   );
   const [theme, setThemeState] = useState<Theme>("dark");
 
@@ -60,7 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setTheme: setThemeState,
       toggleTheme: () => setThemeState((prev) => (prev === "dark" ? "light" : "dark")),
     }),
-    [theme],
+    [theme]
   );
 
   return (

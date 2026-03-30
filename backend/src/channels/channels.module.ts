@@ -13,12 +13,7 @@ import { normalizeIncomingExternalId } from "./platform-utils";
 @Module({
   imports: [WhatsAppModule],
   controllers: [ChannelsController, InternalWebhookController],
-  providers: [
-    ChannelsService,
-    ChannelMessagingService,
-    InboundMessageService,
-    PrismaService,
-  ],
+  providers: [ChannelsService, ChannelMessagingService, InboundMessageService, PrismaService],
   exports: [ChannelsService, ChannelMessagingService, InboundMessageService],
 })
 export class ChannelsModule implements OnModuleInit {
@@ -27,7 +22,7 @@ export class ChannelsModule implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsappService: WhatsAppService,
-    private readonly inbound: InboundMessageService,
+    private readonly inbound: InboundMessageService
   ) {}
 
   async onModuleInit() {
@@ -56,7 +51,7 @@ export class ChannelsModule implements OnModuleInit {
     if (!apiBase || apiBase.includes("localhost") || apiBase.includes("127.0.0.1")) {
       this.logger.warn(
         "API_URL is not set to a public HTTPS URL — Telegram webhooks will not work. " +
-          "Set API_URL in .env to your public tunnel/domain and restart.",
+          "Set API_URL in .env to your public tunnel/domain and restart."
       );
       return;
     }
@@ -74,18 +69,15 @@ export class ChannelsModule implements OnModuleInit {
       const secret = crypto.randomBytes(32).toString("hex");
       const webhookUrl = `${apiBase}/api/internal/task-channels/telegram/${ch.id}`;
       try {
-        const res = await fetch(
-          `https://api.telegram.org/bot${ch.telegramBotToken}/setWebhook`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              url: webhookUrl,
-              secret_token: secret,
-              allowed_updates: ["message"],
-            }),
-          },
-        );
+        const res = await fetch(`https://api.telegram.org/bot${ch.telegramBotToken}/setWebhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: webhookUrl,
+            secret_token: secret,
+            allowed_updates: ["message"],
+          }),
+        });
         const data = (await res.json()) as { ok?: boolean; description?: string };
         if (data.ok) {
           await this.prisma.taskChannel.update({

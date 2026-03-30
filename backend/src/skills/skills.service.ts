@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  Logger,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, ForbiddenException, Logger } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service";
 
 @Injectable()
@@ -84,7 +79,7 @@ export class SkillsService {
   async updateSkill(
     userId: string,
     skillId: string,
-    data: Partial<{ name: string; description: string; url: string; content: string }>,
+    data: Partial<{ name: string; description: string; url: string; content: string }>
   ) {
     await this.getSkill(userId, skillId);
 

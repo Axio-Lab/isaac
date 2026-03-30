@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Post,
-  Param,
-  Body,
-  Headers,
-  HttpCode,
-  Res,
-  Logger,
-} from "@nestjs/common";
+import { Controller, Post, Param, Body, Headers, HttpCode, Res, Logger } from "@nestjs/common";
 import { Response } from "express";
 import { PrismaService } from "../common/prisma.service";
 import { InboundMessageService } from "./inbound-message.service";
@@ -25,7 +16,7 @@ export class InternalWebhookController {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inbound: InboundMessageService,
+    private readonly inbound: InboundMessageService
   ) {}
 
   // ─── Telegram ────────────────────────────────────────────────────
@@ -35,7 +26,7 @@ export class InternalWebhookController {
   async telegramWebhook(
     @Param("channelId") channelId: string,
     @Headers("x-telegram-bot-api-secret-token") secret: string | undefined,
-    @Body() body: any,
+    @Body() body: any
   ) {
     const channel = await this.findChannel(channelId);
     if (!channel) return { ok: true };
@@ -68,7 +59,7 @@ export class InternalWebhookController {
     @Headers("x-slack-signature") slackSig: string | undefined,
     @Headers("x-slack-request-timestamp") slackTs: string | undefined,
     @Body() body: any,
-    @Res({ passthrough: true }) _res: Response,
+    @Res({ passthrough: true }) _res: Response
   ) {
     if (body.type === "url_verification") {
       return { challenge: body.challenge };
@@ -78,7 +69,9 @@ export class InternalWebhookController {
     if (!channel) return { ok: true };
 
     if (channel.slackSigningSecret && slackSig && slackTs) {
-      if (!verifySlackSignature(channel.slackSigningSecret, slackSig, slackTs, JSON.stringify(body))) {
+      if (
+        !verifySlackSignature(channel.slackSigningSecret, slackSig, slackTs, JSON.stringify(body))
+      ) {
         this.logger.warn(`Slack signature mismatch for channel ${channelId}`);
         return { ok: true };
       }
@@ -105,7 +98,7 @@ export class InternalWebhookController {
   async discordWebhook(
     @Param("channelId") channelId: string,
     @Headers("x-discord-secret") secret: string | undefined,
-    @Body() body: any,
+    @Body() body: any
   ) {
     const channel = await this.findChannel(channelId);
     if (!channel) return { ok: true };
@@ -136,7 +129,7 @@ export class InternalWebhookController {
   @HttpCode(200)
   async whatsappIncoming(
     @Headers("x-whatsapp-secret") secret: string | undefined,
-    @Body() body: any,
+    @Body() body: any
   ) {
     const expectedSecret = process.env.WHATSAPP_INCOMING_SECRET;
     if (expectedSecret && expectedSecret !== secret) {

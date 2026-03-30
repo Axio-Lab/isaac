@@ -7,7 +7,9 @@
     "prisma:generate": "prisma generate --no-engine --schema prisma/schema.prisma",
     "build": "npm run prisma:generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{ts,tsx}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -44,6 +46,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "postcss": "^8.5.0",
+    "prettier": "^3.8.1",
     "prisma": "^6.17.1",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0"

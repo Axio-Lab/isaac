@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useSkills,
-  useCreateSkill,
-  useUpdateSkill,
-  useDeleteSkill,
-} from "@/hooks/useSkills";
+import { useSkills, useCreateSkill, useUpdateSkill, useDeleteSkill } from "@/hooks/useSkills";
 import type { UserSkill } from "@/hooks/useSkills";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Plus, MoreVertical, Loader2, Pencil, Trash2, Sparkles } from "lucide-react";
@@ -75,9 +70,16 @@ export function SkillsView() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-lg font-semibold text-foreground tracking-tight">Skills</h1>
-          <p className="text-xs text-muted-foreground">Add skill to improve Isaac&apos;s performance</p>
+          <p className="text-xs text-muted-foreground">
+            Add skill to improve Isaac&apos;s performance
+          </p>
         </div>
-        <GlassButton onClick={openCreate} size="sm" className="glass-filled" contentClassName="flex items-center gap-1.5 text-xs">
+        <GlassButton
+          onClick={openCreate}
+          size="sm"
+          className="glass-filled"
+          contentClassName="flex items-center gap-1.5 text-xs"
+        >
           <Plus className="h-3 w-3" /> Add Skill
         </GlassButton>
       </div>
@@ -92,7 +94,10 @@ export function SkillsView() {
       ) : (
         <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {skills.map((skill) => (
-            <div key={skill.id} className="border border-border rounded-xl p-4 bg-card hover:border-border/80 transition-all duration-150">
+            <div
+              key={skill.id}
+              className="border border-border rounded-xl p-4 bg-card hover:border-border/80 transition-all duration-150"
+            >
               <div className="flex items-start justify-between mb-1.5">
                 <h3 className="text-xs font-medium text-foreground">{skill.name}</h3>
                 <DropdownMenu.Root>
@@ -102,7 +107,11 @@ export function SkillsView() {
                     </button>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Portal>
-                    <DropdownMenu.Content className="min-w-[120px] bg-popover text-popover-foreground border border-border rounded-lg shadow-xl p-1 z-50" sideOffset={4} align="end">
+                    <DropdownMenu.Content
+                      className="min-w-[120px] bg-popover text-popover-foreground border border-border rounded-lg shadow-xl p-1 z-50"
+                      sideOffset={4}
+                      align="end"
+                    >
                       <DropdownMenu.Item
                         className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted"
                         onSelect={() => openEdit(skill)}
@@ -120,9 +129,13 @@ export function SkillsView() {
                 </DropdownMenu.Root>
               </div>
               {skill.description && (
-                <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2">{skill.description}</p>
+                <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2">
+                  {skill.description}
+                </p>
               )}
-              <p className="text-[10px] text-muted-foreground">Created {new Date(skill.createdAt).toLocaleDateString()}</p>
+              <p className="text-[10px] text-muted-foreground">
+                Created {new Date(skill.createdAt).toLocaleDateString()}
+              </p>
             </div>
           ))}
         </div>

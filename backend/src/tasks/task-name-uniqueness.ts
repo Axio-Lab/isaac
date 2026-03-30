@@ -12,7 +12,7 @@ export async function assertTaskNameUniqueForUser(
   opts?: {
     excludeHumanTaskId?: string;
     excludeAutomatedTaskId?: string;
-  },
+  }
 ): Promise<void> {
   const trimmed = String(name).trim();
   if (!trimmed) return;
@@ -24,9 +24,7 @@ export async function assertTaskNameUniqueForUser(
       userId,
       status: { not: "ARCHIVED" },
       name: nameFilter,
-      ...(opts?.excludeHumanTaskId
-        ? { NOT: { id: opts.excludeHumanTaskId } }
-        : {}),
+      ...(opts?.excludeHumanTaskId ? { NOT: { id: opts.excludeHumanTaskId } } : {}),
     },
   });
 
@@ -35,15 +33,11 @@ export async function assertTaskNameUniqueForUser(
       userId,
       status: { not: "ARCHIVED" },
       name: nameFilter,
-      ...(opts?.excludeAutomatedTaskId
-        ? { NOT: { id: opts.excludeAutomatedTaskId } }
-        : {}),
+      ...(opts?.excludeAutomatedTaskId ? { NOT: { id: opts.excludeAutomatedTaskId } } : {}),
     },
   });
 
   if (humanConflict || autoConflict) {
-    throw new BadRequestException(
-      "A task with this name already exists. Choose a unique name.",
-    );
+    throw new BadRequestException("A task with this name already exists. Choose a unique name.");
   }
 }

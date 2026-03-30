@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authenticatedFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -93,8 +89,7 @@ export function useUpdateSkill() {
 export function useDeleteSkill() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      fetchJson(`/api/skills/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id }) => fetchJson(`/api/skills/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] });
       toast.success("Skill deleted");

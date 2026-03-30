@@ -50,9 +50,7 @@ function CheckEmailContent() {
         <p className="text-sm text-muted-foreground mb-1">
           We&apos;ve sent a verification link to:
         </p>
-        {email && (
-          <p className="text-sm font-medium text-foreground mb-4">{email}</p>
-        )}
+        {email && <p className="text-sm font-medium text-foreground mb-4">{email}</p>}
         <p className="text-sm text-muted-foreground mb-6">
           Click the link in the email to verify your account.
         </p>
@@ -76,7 +74,9 @@ function CheckEmailContent() {
 
 export default function CheckEmailPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+    <Suspense
+      fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}
+    >
       <CheckEmailContent />
     </Suspense>
   );

@@ -41,16 +41,19 @@ export class AutomatedTasksService {
     return task;
   }
 
-  async create(userId: string, data: {
-    name: string;
-    description?: string;
-    prompt: string;
-    composioApps?: string[];
-    scheduledTimes?: string[];
-    timezone?: string;
-    deliveryConfig?: Record<string, unknown>;
-    status?: string;
-  }) {
+  async create(
+    userId: string,
+    data: {
+      name: string;
+      description?: string;
+      prompt: string;
+      composioApps?: string[];
+      scheduledTimes?: string[];
+      timezone?: string;
+      deliveryConfig?: Record<string, unknown>;
+      status?: string;
+    }
+  ) {
     const taskName = String(data.name ?? "").trim();
     if (!taskName) {
       throw new BadRequestException("Task name is required");
@@ -101,9 +104,7 @@ export class AutomatedTasksService {
     });
     if (!task) throw new NotFoundException("Automated task not found");
     if (task.status !== "ARCHIVED") {
-      throw new BadRequestException(
-        "Only archived automated tasks can be reactivated this way",
-      );
+      throw new BadRequestException("Only archived automated tasks can be reactivated this way");
     }
     return (this.prisma as any).automatedTask.update({
       where: { id: taskId },

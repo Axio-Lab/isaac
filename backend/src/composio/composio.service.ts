@@ -73,7 +73,7 @@ export class ComposioService {
           description: item.meta?.description || item.description || "",
           logo: item.meta?.logo || item.logo || null,
           categories: (item.meta?.categories || []).map((c: any) =>
-            typeof c === "string" ? c : c.name || c.slug,
+            typeof c === "string" ? c : c.name || c.slug
           ),
           noAuth: !!item.noAuth,
         }))
@@ -126,29 +126,22 @@ export class ComposioService {
 
   async initiateAppConnection(
     userId: string,
-    appSlug: string,
+    appSlug: string
   ): Promise<{ redirectUrl: string | null; connectionId: string }> {
     const client = this.requireClient();
     const slugLower = appSlug.toLowerCase();
     if (CONNECT_EXCLUDED_TOOLKIT_SLUGS.has(slugLower)) {
-      throw new BadRequestException(
-        "This toolkit does not require a connection.",
-      );
+      throw new BadRequestException("This toolkit does not require a connection.");
     }
 
     try {
       const toolkit: any = await (client as any).toolkits.get(appSlug);
       if (toolkit?.noAuth) {
-        throw new BadRequestException(
-          "This toolkit does not require a connection.",
-        );
+        throw new BadRequestException("This toolkit does not require a connection.");
       }
     } catch (e) {
       if (e instanceof BadRequestException) throw e;
-      this.logger.warn(
-        `Could not verify toolkit before connect: ${appSlug}`,
-        e,
-      );
+      this.logger.warn(`Could not verify toolkit before connect: ${appSlug}`, e);
     }
 
     const appBaseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
@@ -176,7 +169,7 @@ export class ComposioService {
   async executeComposioAction(
     userId: string,
     actionName: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<unknown> {
     const client = this.requireClient();
     const slug = actionName.toUpperCase();

@@ -74,7 +74,7 @@ function validateSkillName(name: string, skillPath: string): void {
   }
   if (!/^[a-z0-9-]+$/.test(name)) {
     throw new Error(
-      `Skill at ${skillPath}: 'name' may only contain lowercase letters, numbers, and hyphens`,
+      `Skill at ${skillPath}: 'name' may only contain lowercase letters, numbers, and hyphens`
     );
   }
   if (name.startsWith("-") || name.endsWith("-")) {
@@ -87,7 +87,7 @@ function validateSkillName(name: string, skillPath: string): void {
   const dirName = path.basename(skillPath);
   if (name !== dirName) {
     throw new Error(
-      `Skill at ${skillPath}: 'name' field ("${name}") must match directory name ("${dirName}")`,
+      `Skill at ${skillPath}: 'name' field ("${name}") must match directory name ("${dirName}")`
     );
   }
 }
@@ -202,7 +202,7 @@ export function generateSkillsXml(skills: SkillMetadata[]): string {
     <name>${skill.name}</name>
     <description>${skill.description}</description>
     <location>${skill.path}</location>
-  </skill>`,
+  </skill>`
     )
     .join("\n");
 

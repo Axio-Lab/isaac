@@ -47,9 +47,7 @@ export function ConfirmDialog({
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl shadow-2xl w-[calc(100%-2rem)] max-w-sm p-5 z-50"
         >
           <div className={description ? "mb-3" : "mb-5"}>
-            <Dialog.Title className="text-sm font-semibold text-foreground">
-              {title}
-            </Dialog.Title>
+            <Dialog.Title className="text-sm font-semibold text-foreground">{title}</Dialog.Title>
           </div>
           {description && (
             <Dialog.Description className="text-xs text-muted-foreground mb-5 leading-relaxed">

@@ -1,0 +1,9 @@
+node_modules
+dist
+.next
+build
+coverage
+*.min.js
+**/prisma/migrations
+tsconfig.tsbuildinfo
+package-lock.json

@@ -5,10 +5,7 @@ import { getSession } from "@/lib/auth-client";
 import { API_URL } from "@/lib/api-client";
 import type { QrPhase } from "./whatsapp-qr-panel";
 
-export function useWhatsAppQrStream(
-  whatsappChannelId: string | null | undefined,
-  open: boolean,
-) {
+export function useWhatsAppQrStream(whatsappChannelId: string | null | undefined, open: boolean) {
   const [qrPhase, setQrPhase] = useState<QrPhase>("form");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [connectedNumber, setConnectedNumber] = useState<string | null>(null);

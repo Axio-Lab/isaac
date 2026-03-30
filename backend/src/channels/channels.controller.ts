@@ -25,7 +25,7 @@ import { ChatPlatform } from "@prisma/client";
 export class ChannelsController {
   constructor(
     private readonly channelsService: ChannelsService,
-    private readonly whatsappService: WhatsAppService,
+    private readonly whatsappService: WhatsAppService
   ) {}
 
   @Get()
@@ -51,7 +51,7 @@ export class ChannelsController {
       discordChannelId?: string;
       webhookUrl?: string;
       sharedSecret?: string;
-    },
+    }
   ) {
     const channel = await this.channelsService.createChannel(req.userId, body);
 
@@ -69,10 +69,7 @@ export class ChannelsController {
   }
 
   @Sse(":id/qr")
-  qrStream(
-    @Req() req: any,
-    @Param("id") id: string,
-  ): Observable<MessageEvent> {
+  qrStream(@Req() req: any, @Param("id") id: string): Observable<MessageEvent> {
     this.whatsappService.ensureSession(id).catch((err) => {
       console.error("Failed to start WhatsApp session for SSE", err);
     });
@@ -84,7 +81,7 @@ export class ChannelsController {
           return { type: "close", data: "{}" };
         }
         return { type: evt.type, data: JSON.stringify(evt) };
-      }),
+      })
     );
   }
 
@@ -94,11 +91,7 @@ export class ChannelsController {
   }
 
   @Put(":id")
-  async updateChannel(
-    @Req() req: any,
-    @Param("id") id: string,
-    @Body() body: any,
-  ) {
+  async updateChannel(@Req() req: any, @Param("id") id: string, @Body() body: any) {
     return this.channelsService.updateChannel(req.userId, id, body);
   }
 

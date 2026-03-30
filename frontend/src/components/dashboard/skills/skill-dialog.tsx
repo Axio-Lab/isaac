@@ -60,7 +60,9 @@ export function SkillDialog({
 
           <form onSubmit={onSubmit} className="space-y-3.5">
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Name</label>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                Name
+              </label>
               <input
                 type="text"
                 value={form.name}
@@ -70,7 +72,9 @@ export function SkillDialog({
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Description</label>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                Description
+              </label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -79,7 +83,9 @@ export function SkillDialog({
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">URL (optional)</label>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                URL (optional)
+              </label>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -99,7 +105,9 @@ export function SkillDialog({
               </div>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Content</label>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                Content
+              </label>
               <textarea
                 value={form.content}
                 onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}

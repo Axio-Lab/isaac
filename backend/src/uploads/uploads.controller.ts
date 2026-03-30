@@ -28,7 +28,7 @@ const storage = diskStorage({
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-@Controller("api/uploads")
+@Controller("uploads")
 export class UploadsController {
   @Post()
   @UseInterceptors(
@@ -41,7 +41,7 @@ export class UploadsController {
         }
         cb(null, true);
       },
-    }),
+    })
   )
   upload(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException("No file uploaded");

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authenticatedFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -63,11 +59,7 @@ export function useComposioAppDetails(slug: string) {
 }
 
 export function useInitiateComposioConnection() {
-  return useMutation<
-    { redirectUrl: string },
-    Error,
-    { appSlug: string; [key: string]: unknown }
-  >({
+  return useMutation<{ redirectUrl: string }, Error, { appSlug: string; [key: string]: unknown }>({
     mutationFn: (data) =>
       fetchJson("/api/composio/connections/initiate", {
         method: "POST",

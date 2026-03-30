@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-  OnModuleDestroy,
-} from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import * as cron from "node-cron";
 import { PrismaService } from "@/common/prisma.service";
 import {
@@ -25,14 +20,12 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly reportService: TaskReportService,
     private readonly channelMessaging: ChannelMessagingService,
-    private readonly automatedRunner: AutomatedTaskRunnerService,
+    private readonly automatedRunner: AutomatedTaskRunnerService
   ) {}
 
   onModuleInit() {
     this.cronTask = cron.schedule("* * * * *", () => {
-      this.tick().catch((err) =>
-        this.logger.error("Cron tick failed", err),
-      );
+      this.tick().catch((err) => this.logger.error("Cron tick failed", err));
     });
     this.logger.log("Task cron started (every minute)");
   }
@@ -77,11 +70,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
 
   // ─── Submission creation + prompts ──────────────────────────────
 
-  private async processTaskSubmissions(
-    task: any,
-    now: Date,
-    tz: string,
-  ): Promise<void> {
+  private async processTaskSubmissions(task: any, now: Date, tz: string): Promise<void> {
     const scheduledTimes: string[] = task.scheduledTimes ?? [];
     if (scheduledTimes.length === 0) return;
 
@@ -121,9 +110,10 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
 
       const dueMinutesFromMidnight = sh * 60 + sm;
       const reminderMinutes = dueMinutesFromMidnight - EARLY_REMINDER_MINUTES;
-      const reminderH = reminderMinutes >= 0
-        ? Math.floor(reminderMinutes / 60)
-        : Math.floor((reminderMinutes + 1440) / 60);
+      const reminderH =
+        reminderMinutes >= 0
+          ? Math.floor(reminderMinutes / 60)
+          : Math.floor((reminderMinutes + 1440) / 60);
       const reminderM = ((reminderMinutes % 60) + 60) % 60;
 
       if (nowHour !== reminderH || Math.abs(nowMin - reminderM) > 1) continue;
@@ -153,7 +143,9 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
           },
         });
 
-        const items: Array<{ label: string; evidenceType: string }> = Array.isArray(task.requiredItems)
+        const items: Array<{ label: string; evidenceType: string }> = Array.isArray(
+          task.requiredItems
+        )
           ? task.requiredItems
           : [];
         if (items.length > 0) {
@@ -171,16 +163,21 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         await this.channelMessaging
           .sendToWorker(
             worker.id,
-            msgTaskDuePrompt(worker.name, task.name, evidenceLabel, dueTimeStr, tz, items.length > 0 ? items : undefined),
+            msgTaskDuePrompt(
+              worker.name,
+              task.name,
+              evidenceLabel,
+              dueTimeStr,
+              tz,
+              items.length > 0 ? items : undefined
+            )
           )
           .catch((err) =>
-            this.logger.warn(
-              `Prompt send failed for worker ${worker.id}: ${err.message}`,
-            ),
+            this.logger.warn(`Prompt send failed for worker ${worker.id}: ${err.message}`)
           );
 
         this.logger.log(
-          `Created submission for worker ${worker.name} on task ${task.name} (due ${dueAt.toISOString()}, reminded ${EARLY_REMINDER_MINUTES}min early)`,
+          `Created submission for worker ${worker.name} on task ${task.name} (due ${dueAt.toISOString()}, reminded ${EARLY_REMINDER_MINUTES}min early)`
         );
       }
     }
@@ -188,11 +185,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
 
   // ─── Mark overdue submissions as MISSED ─────────────────────────
 
-  private async processOverdueSubmissions(
-    task: any,
-    now: Date,
-    _tz: string,
-  ): Promise<void> {
+  private async processOverdueSubmissions(task: any, now: Date, _tz: string): Promise<void> {
     const graceMs = (task.graceMinutes || 30) * 60 * 1000;
     const cutoff = new Date(now.getTime() - graceMs);
 
@@ -215,24 +208,20 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         await this.channelMessaging
           .sendToWorker(
             sub.worker.id,
-            msgSubmissionMissed(sub.worker.name, task.name, sub.dueAt.toISOString().slice(11, 16)),
+            msgSubmissionMissed(sub.worker.name, task.name, sub.dueAt.toISOString().slice(11, 16))
           )
           .catch(() => {});
       }
 
       this.logger.log(
-        `Submission ${sub.id} marked MISSED for worker ${sub.worker?.name ?? sub.workerId}`,
+        `Submission ${sub.id} marked MISSED for worker ${sub.worker?.name ?? sub.workerId}`
       );
     }
   }
 
   // ─── Daily report generation ────────────────────────────────────
 
-  private async processReport(
-    task: any,
-    now: Date,
-    tz: string,
-  ): Promise<void> {
+  private async processReport(task: any, now: Date, tz: string): Promise<void> {
     if (!task.reportTime) return;
 
     const [rh, rm] = String(task.reportTime).split(":").map(Number);
@@ -255,6 +244,11 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
 
     if (nowHour !== rh || Math.abs(nowMin - rm) > 1) return;
 
+    this.logger.log(
+      `Report time match for task ${task.id}: reportTime=${task.reportTime}, ` +
+        `now=${nowHour}:${String(nowMin).padStart(2, "0")} (${tz})`
+    );
+
     const { start: dayStartUtc, end: dayEndUtc } = getZonedDayBoundsUtc(now, tz);
     const existing = await (this.prisma as any).taskComplianceReport.findFirst({
       where: {
@@ -266,15 +260,10 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
 
     try {
       this.logger.log(`Generating daily report for task ${task.id}`);
-      const report = await this.reportService.generateDailyReport(
-        task.id,
-        task.userId,
-      );
+      const report = await this.reportService.generateDailyReport(task.id, task.userId);
       await this.reportService.deliverAndRecord(report.id, task.id, task.userId);
     } catch (err: any) {
-      this.logger.error(
-        `Failed to generate report for task ${task.id}: ${err.message}`,
-      );
+      this.logger.error(`Failed to generate report for task ${task.id}: ${err.message}`);
     }
   }
 
@@ -336,10 +325,9 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         this.automatedRunner
           .execute(task, "SCHEDULE")
           .catch((err) =>
-            this.logger.error(`Automated task "${task.name}" failed: ${err.message}`),
+            this.logger.error(`Automated task "${task.name}" failed: ${err.message}`)
           );
       }
     }
   }
-
 }

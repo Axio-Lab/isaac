@@ -18,7 +18,7 @@ export interface ParsedMessage {
 
 export async function parseTelegramWebhook(
   body: any,
-  botToken?: string | null,
+  botToken?: string | null
 ): Promise<ParsedMessage | null> {
   const message = body?.message;
   if (!message) return null;
@@ -35,7 +35,7 @@ export async function parseTelegramWebhook(
     if (fileId) {
       try {
         const res = await fetch(
-          `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`,
+          `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`
         );
         const data = (await res.json()) as { result?: { file_path?: string } };
         if (data.result?.file_path) {
@@ -80,9 +80,7 @@ export function parseDiscordWebhook(body: any): ParsedMessage | null {
 
   let imageUrl: string | undefined;
   if (body.attachments && Array.isArray(body.attachments)) {
-    const img = body.attachments.find((a: any) =>
-      a.content_type?.startsWith("image/"),
-    );
+    const img = body.attachments.find((a: any) => a.content_type?.startsWith("image/"));
     if (img?.url) imageUrl = img.url;
   }
 
@@ -95,9 +93,7 @@ export function parseWhatsAppWebhook(body: any): ParsedMessage | null {
   const senderJid = body?.from ?? body?.sender;
   if (!senderJid) return null;
 
-  const senderExternalId = senderJid
-    .replace(/:[\d]+@/, "@")
-    .replace(/@.*$/, "");
+  const senderExternalId = senderJid.replace(/:[\d]+@/, "@").replace(/@.*$/, "");
 
   const text = body.text ?? body.message;
   const imageUrl = body.imageUrl;

@@ -7,7 +7,8 @@ import { ChatMessageList } from "./chat-message-list";
 import { ChatComposer } from "./chat-composer";
 
 export function ChatView() {
-  const { messages, sendMessage, isStreaming, planMode, setPlanMode, clearMessages } = useIsaacChat();
+  const { messages, sendMessage, isStreaming, planMode, setPlanMode, clearMessages } =
+    useIsaacChat();
   const [input, setInput] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -25,7 +26,12 @@ export function ChatView() {
         onClear={clearMessages}
       />
       <ChatMessageList messages={messages} isStreaming={isStreaming} />
-      <ChatComposer value={input} onChange={setInput} onSubmit={handleSubmit} disabled={isStreaming} />
+      <ChatComposer
+        value={input}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        disabled={isStreaming}
+      />
     </div>
   );
 }

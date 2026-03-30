@@ -13,11 +13,7 @@ export const metadata: Metadata = {
   description: "AI Micromanagement for Teams and Operations",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>

@@ -21,10 +21,7 @@ export class ComposioController {
   @Get("accounts")
   async listAccounts(@Req() req: any) {
     if (!this.composioService.isConfigured()) {
-      throw new HttpException(
-        "Composio is not configured",
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException("Composio is not configured", HttpStatus.SERVICE_UNAVAILABLE);
     }
     const accounts = await this.composioService.listConnectedAccounts(req.userId);
     return { accounts };
@@ -33,10 +30,7 @@ export class ComposioController {
   @Get("apps")
   async listApps() {
     if (!this.composioService.isConfigured()) {
-      throw new HttpException(
-        "Composio is not configured",
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException("Composio is not configured", HttpStatus.SERVICE_UNAVAILABLE);
     }
     const apps = await this.composioService.listAvailableApps();
     return { apps };
@@ -45,10 +39,7 @@ export class ComposioController {
   @Get("apps/:slug")
   async getAppDetails(@Param("slug") slug: string) {
     if (!this.composioService.isConfigured()) {
-      throw new HttpException(
-        "Composio is not configured",
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException("Composio is not configured", HttpStatus.SERVICE_UNAVAILABLE);
     }
     const details = await this.composioService.getAppDetails(slug);
     if (!details) {
@@ -60,23 +51,14 @@ export class ComposioController {
   @Post("initiate")
   async initiateConnection(
     @Req() req: any,
-    @Body() body: { appSlug: string; callbackUrl?: string },
+    @Body() body: { appSlug: string; callbackUrl?: string }
   ) {
     if (!this.composioService.isConfigured()) {
-      throw new HttpException(
-        "Composio is not configured",
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException("Composio is not configured", HttpStatus.SERVICE_UNAVAILABLE);
     }
-    const result = await this.composioService.initiateAppConnection(
-      req.userId,
-      body.appSlug,
-    );
+    const result = await this.composioService.initiateAppConnection(req.userId, body.appSlug);
     if (!result) {
-      throw new HttpException(
-        "Failed to initiate connection",
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException("Failed to initiate connection", HttpStatus.BAD_REQUEST);
     }
     return result;
   }
@@ -84,10 +66,7 @@ export class ComposioController {
   @Delete(":accountId")
   async deleteConnection(@Param("accountId") accountId: string) {
     if (!this.composioService.isConfigured()) {
-      throw new HttpException(
-        "Composio is not configured",
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException("Composio is not configured", HttpStatus.SERVICE_UNAVAILABLE);
     }
     await this.composioService.deleteConnection(accountId);
     return { success: true };

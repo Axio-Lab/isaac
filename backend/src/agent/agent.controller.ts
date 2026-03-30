@@ -26,14 +26,14 @@ interface ChatRequestBody {
 export class AgentController {
   constructor(
     private readonly agentService: AgentService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   @Post("chat")
   async chat(
     @Body() body: ChatRequestBody,
     @Req() req: Request,
-    @Res() res: Response,
+    @Res() res: Response
   ): Promise<void> {
     const userId = (req as any).userId;
 
@@ -81,10 +81,7 @@ export class AgentController {
   }
 
   @Get("history/:sessionId")
-  async getHistory(
-    @Param("sessionId") sessionId: string,
-    @Req() req: Request,
-  ) {
+  async getHistory(@Param("sessionId") sessionId: string, @Req() req: Request) {
     const userId = (req as any).userId;
 
     const messages = await this.prisma.chatMessage.findMany({

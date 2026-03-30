@@ -74,10 +74,9 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   basePath: "/api/auth",
   secret: process.env.BETTER_AUTH_SECRET!,
-  trustedOrigins: [
-    process.env.NEXT_PUBLIC_APP_URL!,
-    process.env.NEXT_PUBLIC_API_URL!,
-  ].filter(Boolean),
+  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL!, process.env.NEXT_PUBLIC_API_URL!].filter(
+    Boolean
+  ),
 
   session: {
     expiresIn: 60 * 60 * 24 * 7,

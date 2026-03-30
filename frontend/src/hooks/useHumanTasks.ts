@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authenticatedFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -128,8 +124,7 @@ export function useHumanTasks(page?: number, limit?: number) {
 
   return useQuery<{ tasks: HumanTask[] }>({
     queryKey: ["human-tasks", { page, limit }],
-    queryFn: () =>
-      fetchJson(`/api/human-tasks${qs ? `?${qs}` : ""}`),
+    queryFn: () => fetchJson(`/api/human-tasks${qs ? `?${qs}` : ""}`),
   });
 }
 
@@ -143,11 +138,7 @@ export function useHumanTask(taskId: string) {
 
 export function useCreateHumanTask() {
   const queryClient = useQueryClient();
-  return useMutation<
-    { task: HumanTask },
-    Error,
-    Partial<HumanTask>
-  >({
+  return useMutation<{ task: HumanTask }, Error, Partial<HumanTask>>({
     mutationFn: (data) =>
       fetchJson("/api/human-tasks", {
         method: "POST",
@@ -163,11 +154,7 @@ export function useCreateHumanTask() {
 
 export function useUpdateHumanTask() {
   const queryClient = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { taskId: string; data: Partial<HumanTask> }
-  >({
+  return useMutation<void, Error, { taskId: string; data: Partial<HumanTask> }>({
     mutationFn: ({ taskId, data }) =>
       fetchJson(`/api/human-tasks/${taskId}`, {
         method: "PUT",
@@ -184,8 +171,7 @@ export function useUpdateHumanTask() {
 export function useArchiveHumanTask() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { taskId: string }>({
-    mutationFn: ({ taskId }) =>
-      fetchJson(`/api/human-tasks/${taskId}/archive`, { method: "POST" }),
+    mutationFn: ({ taskId }) => fetchJson(`/api/human-tasks/${taskId}/archive`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["human-tasks"] });
       toast.success("Task archived — workers notified");
@@ -210,8 +196,7 @@ export function useActivateHumanTask() {
 export function useDeleteHumanTask() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { taskId: string }>({
-    mutationFn: ({ taskId }) =>
-      fetchJson(`/api/human-tasks/${taskId}`, { method: "DELETE" }),
+    mutationFn: ({ taskId }) => fetchJson(`/api/human-tasks/${taskId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["human-tasks"] });
       toast.success("Task deleted");
@@ -223,8 +208,7 @@ export function useDeleteHumanTask() {
 export function usePauseHumanTask() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { taskId: string; name?: string }>({
-    mutationFn: ({ taskId }) =>
-      fetchJson(`/api/human-tasks/${taskId}/pause`, { method: "POST" }),
+    mutationFn: ({ taskId }) => fetchJson(`/api/human-tasks/${taskId}/pause`, { method: "POST" }),
     onSuccess: (_, { name }) => {
       queryClient.invalidateQueries({ queryKey: ["human-tasks"] });
       toast.success(name ? `${name} has been paused` : "Task paused");
@@ -236,8 +220,7 @@ export function usePauseHumanTask() {
 export function useResumeHumanTask() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { taskId: string; name?: string }>({
-    mutationFn: ({ taskId }) =>
-      fetchJson(`/api/human-tasks/${taskId}/resume`, { method: "POST" }),
+    mutationFn: ({ taskId }) => fetchJson(`/api/human-tasks/${taskId}/resume`, { method: "POST" }),
     onSuccess: (_, { name }) => {
       queryClient.invalidateQueries({ queryKey: ["human-tasks"] });
       toast.success(name ? `${name} has been resumed` : "Task resumed");
@@ -249,8 +232,7 @@ export function useResumeHumanTask() {
 export function useTaskWorkers(taskId: string) {
   return useQuery<{ workers: HumanWorker[] }>({
     queryKey: ["human-tasks", taskId, "workers"],
-    queryFn: () =>
-      fetchJson(`/api/human-tasks/${taskId}/workers`),
+    queryFn: () => fetchJson(`/api/human-tasks/${taskId}/workers`),
     enabled: !!taskId,
     refetchOnWindowFocus: true,
   });
@@ -314,11 +296,7 @@ export function useUpdateWorker() {
 
 export function useRemoveWorker() {
   const queryClient = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { taskId: string; workerId: string; name?: string }
-  >({
+  return useMutation<void, Error, { taskId: string; workerId: string; name?: string }>({
     mutationFn: ({ taskId, workerId }) =>
       fetchJson(`/api/human-tasks/${taskId}/workers/${workerId}`, {
         method: "DELETE",
@@ -342,7 +320,7 @@ export function useTaskSubmissions(
     date?: string;
     dateFrom?: string;
     dateTo?: string;
-  },
+  }
 ) {
   const params = new URLSearchParams();
   if (filters?.workerId) params.set("workerId", filters.workerId);
@@ -354,10 +332,7 @@ export function useTaskSubmissions(
 
   return useQuery<{ submissions: TaskSubmission[] }>({
     queryKey: ["human-tasks", taskId, "submissions", filters],
-    queryFn: () =>
-      fetchJson(
-        `/api/human-tasks/${taskId}/submissions${qs ? `?${qs}` : ""}`,
-      ),
+    queryFn: () => fetchJson(`/api/human-tasks/${taskId}/submissions${qs ? `?${qs}` : ""}`),
     enabled: !!taskId,
     refetchInterval: 30_000,
   });
@@ -366,19 +341,14 @@ export function useTaskSubmissions(
 export function useTaskReports(taskId: string) {
   return useQuery<{ reports: TaskComplianceReport[] }>({
     queryKey: ["human-tasks", taskId, "reports"],
-    queryFn: () =>
-      fetchJson(`/api/human-tasks/${taskId}/reports`),
+    queryFn: () => fetchJson(`/api/human-tasks/${taskId}/reports`),
     enabled: !!taskId,
   });
 }
 
 export function useGenerateReport() {
   const queryClient = useQueryClient();
-  return useMutation<
-    { report: TaskComplianceReport },
-    Error,
-    { taskId: string }
-  >({
+  return useMutation<{ report: TaskComplianceReport }, Error, { taskId: string }>({
     mutationFn: ({ taskId }) =>
       fetchJson(`/api/human-tasks/${taskId}/reports/generate`, {
         method: "POST",
@@ -395,11 +365,7 @@ export function useGenerateReport() {
 
 export function useResendReport() {
   const queryClient = useQueryClient();
-  return useMutation<
-    { success: boolean },
-    Error,
-    { taskId: string; reportId: string }
-  >({
+  return useMutation<{ success: boolean }, Error, { taskId: string; reportId: string }>({
     mutationFn: ({ taskId, reportId }) =>
       fetchJson(`/api/human-tasks/${taskId}/reports/${reportId}/resend`, {
         method: "POST",
@@ -416,11 +382,7 @@ export function useResendReport() {
 
 export function useDeleteReport() {
   const queryClient = useQueryClient();
-  return useMutation<
-    void,
-    Error,
-    { taskId: string; reportId: string }
-  >({
+  return useMutation<void, Error, { taskId: string; reportId: string }>({
     mutationFn: ({ taskId, reportId }) =>
       fetchJson(`/api/human-tasks/${taskId}/reports/${reportId}`, {
         method: "DELETE",
@@ -451,7 +413,6 @@ export function useAiFillTask() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onError: (e) =>
-      toast.error(e.message || "Could not prefill the form with Isaac"),
+    onError: (e) => toast.error(e.message || "Could not prefill the form with Isaac"),
   });
 }

@@ -2,12 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service";
 import { ComposioService } from "../composio/composio.service";
 
-export type ReportDestination =
-  | "whatsapp"
-  | "telegram"
-  | "slack"
-  | "discord"
-  | "gmail";
+export type ReportDestination = "whatsapp" | "telegram" | "slack" | "discord" | "gmail";
 
 export interface DeliveryConfig {
   destinations: ReportDestination[];
@@ -26,7 +21,7 @@ export class ReportDeliveryService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly composioService: ComposioService,
+    private readonly composioService: ComposioService
   ) {}
 
   async createReportDocument(config: {
@@ -54,9 +49,11 @@ export class ReportDeliveryService {
         const result: any = await this.composioService.executeComposioAction(
           userId,
           "GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN",
-          params,
+          params
         );
-        return result?.data?.documentUrl ?? result?.data?.url ?? null;
+        const url = this.extractDocUrl(result);
+        this.logger.log(`Google Doc creation result: url=${url ?? "null"}`);
+        return url;
       }
 
       if (documentType === "notion") {
@@ -69,9 +66,11 @@ export class ReportDeliveryService {
         const result: any = await this.composioService.executeComposioAction(
           userId,
           "NOTION_CREATE_NOTION_PAGE",
-          params,
+          params
         );
-        return result?.data?.url ?? null;
+        const url = this.extractDocUrl(result);
+        this.logger.log(`Notion page creation result: url=${url ?? "null"}`);
+        return url;
       }
 
       return null;
@@ -81,18 +80,28 @@ export class ReportDeliveryService {
     }
   }
 
+  private extractDocUrl(result: any): string | null {
+    if (!result) return null;
+    const d = result.data ?? result.response_data ?? result.result ?? result;
+    const url =
+      d?.documentUrl ?? d?.url ?? d?.document_url ?? d?.pageUrl ?? d?.page_url ?? d?.link ?? null;
+    if (typeof url === "string" && url.startsWith("http")) return url;
+    if (!url) {
+      this.logger.debug(`Doc result keys: ${JSON.stringify(Object.keys(d ?? {}))}`);
+    }
+    return null;
+  }
+
   async deliverToDestinations(
     destinations: ReportDestination[],
     summary: string,
     documentUrl: string | null,
     userId: string,
     deliveryConfig?: Partial<DeliveryConfig>,
-    emailSubject?: string,
+    emailSubject?: string
   ): Promise<Record<ReportDestination, boolean>> {
     const results = {} as Record<ReportDestination, boolean>;
-    const message = documentUrl
-      ? `${summary}\n\nFull report: ${documentUrl}`
-      : summary;
+    const message = documentUrl ? `${summary}\n\nFull report: ${documentUrl}` : summary;
 
     for (const destination of destinations) {
       try {
@@ -101,7 +110,7 @@ export class ReportDeliveryService {
           message,
           userId,
           deliveryConfig,
-          emailSubject,
+          emailSubject
         );
       } catch (error) {
         this.logger.error(`Failed to deliver to ${destination}`, error);
@@ -117,7 +126,7 @@ export class ReportDeliveryService {
     message: string,
     userId: string,
     config?: Partial<DeliveryConfig>,
-    emailSubject?: string,
+    emailSubject?: string
   ): Promise<boolean> {
     if (!this.composioService.isConfigured()) return false;
 
@@ -126,7 +135,7 @@ export class ReportDeliveryService {
         const result = await this.composioService.executeComposioAction(
           userId,
           "TELEGRAM_SEND_MESSAGE",
-          { chat_id: config?.telegramChatId, text: message },
+          { chat_id: config?.telegramChatId, text: message }
         );
         return !!result;
       }
@@ -135,7 +144,7 @@ export class ReportDeliveryService {
         const result = await this.composioService.executeComposioAction(
           userId,
           "SLACK_SEND_MESSAGE",
-          { channel: config?.slackChannelId, text: message },
+          { channel: config?.slackChannelId, text: message }
         );
         return !!result;
       }
@@ -144,7 +153,7 @@ export class ReportDeliveryService {
         const result = await this.composioService.executeComposioAction(
           userId,
           "DISCORD_SEND_MESSAGE",
-          { channel_id: config?.discordChannelId, content: message },
+          { channel_id: config?.discordChannelId, content: message }
         );
         return !!result;
       }
@@ -157,7 +166,7 @@ export class ReportDeliveryService {
             to: config?.recipientEmail,
             subject: emailSubject || config?.emailSubject || "Task Compliance Report",
             body: message,
-          },
+          }
         );
         return !!result;
       }
@@ -166,7 +175,7 @@ export class ReportDeliveryService {
         const result = await this.composioService.executeComposioAction(
           userId,
           "WHATSAPP_SEND_MESSAGE",
-          { to: config?.whatsappNumber, message },
+          { to: config?.whatsappNumber, message }
         );
         return !!result;
       }

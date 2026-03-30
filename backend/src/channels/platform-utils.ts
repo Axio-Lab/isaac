@@ -17,10 +17,7 @@ export interface IncomingMessage {
  * Build all possible externalId forms so DB lookups succeed regardless
  * of whether the stored value has a `+` prefix, raw digits, or a JID suffix.
  */
-export function buildExternalIdCandidates(
-  senderExternalId: string,
-  platform: string,
-): string[] {
+export function buildExternalIdCandidates(senderExternalId: string, platform: string): string[] {
   const candidates = [senderExternalId];
   const upper = platform.toUpperCase();
 
@@ -40,16 +37,13 @@ export function buildExternalIdCandidates(
  * Normalize a raw JID / phone from a platform webhook into a clean externalId
  * that strips device suffixes and `@` domains.
  */
-export function normalizeIncomingExternalId(
-  rawId: string,
-  platform: string,
-): string {
+export function normalizeIncomingExternalId(rawId: string, platform: string): string {
   const upper = platform.toUpperCase();
 
   if (upper === "WHATSAPP") {
     return rawId
-      .replace(/:[\d]+@/, "@")   // strip device suffix  e.g. 234...:5@s.whatsapp.net
-      .replace(/@.*$/, "");       // strip @s.whatsapp.net
+      .replace(/:[\d]+@/, "@") // strip device suffix  e.g. 234...:5@s.whatsapp.net
+      .replace(/@.*$/, ""); // strip @s.whatsapp.net
   }
 
   return rawId;

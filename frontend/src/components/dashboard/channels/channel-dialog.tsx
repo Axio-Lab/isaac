@@ -32,8 +32,10 @@ export function ChannelDialog({
   const isEdit = mode === "edit";
   const isWhatsApp = form.platform === "WHATSAPP";
 
-  const { qrPhase, qrDataUrl, connectedNumber, qrError, retry } =
-    useWhatsAppQrStream(whatsappChannelId, open);
+  const { qrPhase, qrDataUrl, connectedNumber, qrError, retry } = useWhatsAppQrStream(
+    whatsappChannelId,
+    open
+  );
 
   const showQrPanel = isWhatsApp && qrPhase !== "form";
 
@@ -47,17 +49,10 @@ export function ChannelDialog({
         >
           <div className="flex items-center justify-between mb-5">
             <Dialog.Title className="text-sm font-semibold text-foreground">
-              {isEdit
-                ? "Edit channel"
-                : showQrPanel
-                  ? "Connect WhatsApp"
-                  : "Add channel"}
+              {isEdit ? "Edit channel" : showQrPanel ? "Connect WhatsApp" : "Add channel"}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button
-                type="button"
-                className="p-1 rounded-md hover:bg-muted text-muted-foreground"
-              >
+              <button type="button" className="p-1 rounded-md hover:bg-muted text-muted-foreground">
                 <X className="h-3.5 w-3.5" />
               </button>
             </Dialog.Close>

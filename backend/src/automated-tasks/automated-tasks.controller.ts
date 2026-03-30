@@ -22,20 +22,12 @@ import { AutomatedTaskRunnerService } from "./automated-task-runner.service";
 export class AutomatedTasksController {
   constructor(
     private readonly service: AutomatedTasksService,
-    private readonly runner: AutomatedTaskRunnerService,
+    private readonly runner: AutomatedTaskRunnerService
   ) {}
 
   @Get()
-  async list(
-    @Req() req: any,
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-  ) {
-    return this.service.list(
-      req.userId,
-      page ? Number(page) : 1,
-      limit ? Number(limit) : 50,
-    );
+  async list(@Req() req: any, @Query("page") page?: string, @Query("limit") limit?: string) {
+    return this.service.list(req.userId, page ? Number(page) : 1, limit ? Number(limit) : 50);
   }
 
   @Get(":id")
@@ -74,9 +66,7 @@ export class AutomatedTasksController {
   async run(@Req() req: any, @Param("id") id: string) {
     const task = await this.service.get(req.userId, id);
     if (task.status === "ARCHIVED") {
-      throw new BadRequestException(
-        "Cannot run an archived automated task — reactivate it first",
-      );
+      throw new BadRequestException("Cannot run an archived automated task — reactivate it first");
     }
     const result = await this.runner.execute(task, "ON_DEMAND");
     return result;

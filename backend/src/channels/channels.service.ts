@@ -17,7 +17,7 @@ export class ChannelsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly whatsappService: WhatsAppService,
+    private readonly whatsappService: WhatsAppService
   ) {}
 
   private getApiBaseUrl(): string {
@@ -62,7 +62,7 @@ export class ChannelsService {
       discordChannelId?: string;
       webhookUrl?: string;
       sharedSecret?: string;
-    },
+    }
   ) {
     const hasCredentials =
       !!data.telegramBotToken ||
@@ -88,26 +88,20 @@ export class ChannelsService {
   /**
    * Register a Telegram webhook so the bot receives incoming messages.
    */
-  private async registerTelegramWebhook(
-    channelId: string,
-    botToken: string,
-  ): Promise<void> {
+  private async registerTelegramWebhook(channelId: string, botToken: string): Promise<void> {
     const secret = crypto.randomBytes(32).toString("hex");
     const webhookUrl = `${this.getApiBaseUrl()}/api/internal/task-channels/telegram/${channelId}`;
 
     try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${botToken}/setWebhook`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: webhookUrl,
-            secret_token: secret,
-            allowed_updates: ["message"],
-          }),
-        },
-      );
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: secret,
+          allowed_updates: ["message"],
+        }),
+      });
       const data = (await res.json()) as { ok?: boolean; description?: string };
       if (!data.ok) {
         this.logger.warn(`Telegram setWebhook failed: ${data.description}`);
@@ -134,9 +128,7 @@ export class ChannelsService {
       !!channel.webhookUrl;
 
     if (!hasCredentials && channel.status !== "connected") {
-      throw new BadRequestException(
-        "Add credentials (or refresh status) before sending a test.",
-      );
+      throw new BadRequestException("Add credentials (or refresh status) before sending a test.");
     }
 
     switch (channel.platform) {
@@ -173,18 +165,15 @@ export class ChannelsService {
     };
     if (!data.ok) {
       throw new BadRequestException(
-        data.description || "Telegram rejected this token. Check the token from @BotFather.",
+        data.description || "Telegram rejected this token. Check the token from @BotFather."
       );
     }
     const uname = data.result?.username;
     return {
       success: true,
-      message: uname
-        ? `Telegram bot @${uname} is valid`
-        : "Telegram accepted this bot token",
+      message: uname ? `Telegram bot @${uname} is valid` : "Telegram accepted this bot token",
       detail: {
-        hint:
-          "Telegram’s API responded successfully — notifications can use this bot.",
+        hint: "Telegram’s API responded successfully — notifications can use this bot.",
       },
     };
   }
@@ -202,7 +191,7 @@ export class ChannelsService {
       throw new BadRequestException(
         res.status === 401
           ? "Discord rejected this bot token."
-          : `Discord API error (${res.status}): ${err.slice(0, 120)}`,
+          : `Discord API error (${res.status}): ${err.slice(0, 120)}`
       );
     }
     const u = (await res.json()) as { username?: string; id?: string };
@@ -220,9 +209,7 @@ export class ChannelsService {
   private async testSlackChannel(channel: TaskChannel) {
     const token = channel.slackBotToken?.trim();
     if (!token) {
-      throw new BadRequestException(
-        "Add a Slack bot token (xoxb-...) before testing.",
-      );
+      throw new BadRequestException("Add a Slack bot token (xoxb-...) before testing.");
     }
     const res = await fetch("https://slack.com/api/auth.test", {
       method: "POST",
@@ -237,9 +224,7 @@ export class ChannelsService {
     }
     return {
       success: true,
-      message: data.team
-        ? `Slack workspace “${data.team}” reachable`
-        : "Slack token is valid",
+      message: data.team ? `Slack workspace “${data.team}” reachable` : "Slack token is valid",
       detail: { hint: "Slack accepted your bot credentials." },
     };
   }
@@ -301,7 +286,7 @@ export class ChannelsService {
       discordChannelId: string;
       webhookUrl: string;
       sharedSecret: string;
-    }>,
+    }>
   ) {
     const channel = await this.getChannel(userId, channelId);
 
@@ -333,15 +318,11 @@ export class ChannelsService {
       return this.prisma.taskChannel.findUnique({ where: { id: channelId } });
     }
 
-    if (
-      channel.platform === ChatPlatform.TELEGRAM &&
-      channel.telegramBotToken
-    ) {
+    if (channel.platform === ChatPlatform.TELEGRAM && channel.telegramBotToken) {
       try {
-        await fetch(
-          `https://api.telegram.org/bot${channel.telegramBotToken}/deleteWebhook`,
-          { method: "POST" },
-        );
+        await fetch(`https://api.telegram.org/bot${channel.telegramBotToken}/deleteWebhook`, {
+          method: "POST",
+        });
       } catch {
         this.logger.warn(`Failed to delete Telegram webhook for ${channelId}`);
       }

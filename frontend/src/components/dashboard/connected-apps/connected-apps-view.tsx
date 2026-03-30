@@ -8,15 +8,7 @@ import {
   useDeleteComposioConnection,
 } from "@/hooks/useComposioConnections";
 import type { ComposioApp } from "@/hooks/useComposioConnections";
-import {
-  Loader2,
-  Search,
-  Plug,
-  Unplug,
-  Zap,
-  ChevronRight,
-  Check,
-} from "lucide-react";
+import { Loader2, Search, Plug, Unplug, Zap, ChevronRight, Check } from "lucide-react";
 import { GlassButton } from "@/components/ui/glass-button";
 import { AppPagination } from "@/components/ui/pagination";
 import { AppDetailPanel } from "./app-detail-panel";
@@ -40,7 +32,7 @@ export function ConnectedAppsView() {
   const filteredApps = allApps.filter(
     (app) =>
       app.name.toLowerCase().includes(search.toLowerCase()) ||
-      app.slug.toLowerCase().includes(search.toLowerCase()),
+      app.slug.toLowerCase().includes(search.toLowerCase())
   );
 
   const connectedApps = filteredApps.filter((app) => connectedSlugs.has(app.slug.toLowerCase()));
@@ -49,13 +41,13 @@ export function ConnectedAppsView() {
   const connectedTotalPages = Math.ceil(connectedApps.length / CONNECTED_PAGE_SIZE);
   const pagedConnectedApps = connectedApps.slice(
     (connectedPage - 1) * CONNECTED_PAGE_SIZE,
-    connectedPage * CONNECTED_PAGE_SIZE,
+    connectedPage * CONNECTED_PAGE_SIZE
   );
 
   const availableTotalPages = Math.ceil(availableApps.length / AVAILABLE_PAGE_SIZE);
   const pagedAvailableApps = availableApps.slice(
     (availablePage - 1) * AVAILABLE_PAGE_SIZE,
-    availablePage * AVAILABLE_PAGE_SIZE,
+    availablePage * AVAILABLE_PAGE_SIZE
   );
 
   useEffect(() => {
@@ -85,7 +77,9 @@ export function ConnectedAppsView() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-foreground tracking-tight">Connected Apps</h1>
-        <p className="text-xs text-muted-foreground">Connect your apps to extend Isaac&apos;s capabilities</p>
+        <p className="text-xs text-muted-foreground">
+          Connect your apps to extend Isaac&apos;s capabilities
+        </p>
       </div>
 
       <div className="relative mb-6">
@@ -193,58 +187,58 @@ export function ConnectedAppsView() {
                   initiateConnection.isPending &&
                   initiateConnection.variables?.appSlug === app.slug;
                 return (
-                <div
-                  key={app.slug}
-                  className="group border border-border rounded-xl p-3.5 bg-card hover:border-border/80 transition-all duration-150"
-                >
-                  <div className="flex items-center gap-2.5 mb-3">
-                    {app.logo ? (
-                      <img src={app.logo} alt={app.name} className="h-8 w-8 rounded-lg" />
-                    ) : (
-                      <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                        {app.name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{app.name}</p>
-                      {app.categories && app.categories.length > 0 && (
-                        <p className="text-[9px] text-muted-foreground truncate mt-0.5">
-                          {(app.categories as string[]).slice(0, 2).join(" · ")}
-                        </p>
+                  <div
+                    key={app.slug}
+                    className="group border border-border rounded-xl p-3.5 bg-card hover:border-border/80 transition-all duration-150"
+                  >
+                    <div className="flex items-center gap-2.5 mb-3">
+                      {app.logo ? (
+                        <img src={app.logo} alt={app.name} className="h-8 w-8 rounded-lg" />
+                      ) : (
+                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                          {app.name.charAt(0)}
+                        </div>
                       )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{app.name}</p>
+                        {app.categories && app.categories.length > 0 && (
+                          <p className="text-[9px] text-muted-foreground truncate mt-0.5">
+                            {(app.categories as string[]).slice(0, 2).join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <GlassButton
+                        onClick={() => initiateConnection.mutate({ appSlug: app.slug })}
+                        disabled={initiateConnection.isPending}
+                        aria-busy={isConnectingThis}
+                        size="sm"
+                        className="flex-1 glass-filled"
+                        contentClassName="flex items-center justify-center gap-1.5 text-[10px] px-2.5 py-1.5"
+                      >
+                        {isConnectingThis ? (
+                          <>
+                            <Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" />
+                            Connecting…
+                          </>
+                        ) : (
+                          <>
+                            <Plug className="h-2.5 w-2.5 shrink-0" />
+                            Connect
+                          </>
+                        )}
+                      </GlassButton>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAppSlug(app.slug)}
+                        className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <ChevronRight className="h-2.5 w-2.5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-1.5">
-                    <GlassButton
-                      onClick={() => initiateConnection.mutate({ appSlug: app.slug })}
-                      disabled={initiateConnection.isPending}
-                      aria-busy={isConnectingThis}
-                      size="sm"
-                      className="flex-1 glass-filled"
-                      contentClassName="flex items-center justify-center gap-1.5 text-[10px] px-2.5 py-1.5"
-                    >
-                      {isConnectingThis ? (
-                        <>
-                          <Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" />
-                          Connecting…
-                        </>
-                      ) : (
-                        <>
-                          <Plug className="h-2.5 w-2.5 shrink-0" />
-                          Connect
-                        </>
-                      )}
-                    </GlassButton>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedAppSlug(app.slug)}
-                      className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <ChevronRight className="h-2.5 w-2.5" />
-                    </button>
-                  </div>
-                </div>
-              );
+                );
               })}
             </div>
 

@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 
 export type TaskSelectOption = { value: string; label: string };
 
-const defaultLabelClass =
-  "block text-[10px] font-medium text-muted-foreground mb-1";
+const defaultLabelClass = "block text-[10px] font-medium text-muted-foreground mb-1";
 
 const defaultToolbarButtonClass =
   "flex w-full min-w-[7.5rem] items-center justify-between gap-1.5 rounded-lg border border-input bg-background px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors hover:bg-muted/40 focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none";
@@ -67,7 +66,7 @@ export function TaskSelectDropdown({
           <DropdownMenu.Content
             className={cn(
               contentZIndexClass,
-              "max-h-[min(280px,60vh)] min-w-(--radix-dropdown-menu-trigger-width) overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-xl",
+              "max-h-[min(280px,60vh)] min-w-(--radix-dropdown-menu-trigger-width) overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-xl"
             )}
             side="bottom"
             align="start"
@@ -81,7 +80,7 @@ export function TaskSelectDropdown({
                 key={opt.value === "" ? `__empty__-${opt.label}` : opt.value}
                 className={cn(
                   "cursor-pointer rounded-md px-2.5 py-1.5 text-[11px] outline-none data-highlighted:bg-muted data-highlighted:text-foreground",
-                  value === opt.value && "bg-muted font-medium",
+                  value === opt.value && "bg-muted font-medium"
                 )}
                 onSelect={() => onChange(opt.value)}
               >

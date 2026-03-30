@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
-} from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { ChannelMessagingService } from "@/channels/channel-messaging.service";
 import {
@@ -28,7 +23,7 @@ export class TaskWorkerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly messaging: ChannelMessagingService,
+    private readonly messaging: ChannelMessagingService
   ) {}
 
   async listWorkers(taskId: string) {
@@ -54,7 +49,7 @@ export class TaskWorkerService {
     if (!task) throw new NotFoundException("Task not found");
     if (!task.taskChannelId) {
       throw new BadRequestException(
-        "This task has no notification channel. Add one before inviting members.",
+        "This task has no notification channel. Add one before inviting members."
       );
     }
 
@@ -62,9 +57,7 @@ export class TaskWorkerService {
     if (!phone && normalized.externalId) {
       const digits = normalized.externalId.replace(/\D/g, "");
       if (digits.length >= 8) {
-        phone = normalized.externalId.startsWith("+")
-          ? normalized.externalId
-          : `+${digits}`;
+        phone = normalized.externalId.startsWith("+") ? normalized.externalId : `+${digits}`;
       }
     }
 
@@ -81,11 +74,8 @@ export class TaskWorkerService {
       },
     });
 
-    this.sendOnboardingMessage(worker.id, worker.name, taskId).catch(
-      (err) =>
-        this.logger.warn(
-          `Onboarding message failed for worker ${worker.id}: ${err.message}`,
-        ),
+    this.sendOnboardingMessage(worker.id, worker.name, taskId).catch((err) =>
+      this.logger.warn(`Onboarding message failed for worker ${worker.id}: ${err.message}`)
     );
 
     return worker;
@@ -94,7 +84,7 @@ export class TaskWorkerService {
   private async sendOnboardingMessage(
     workerId: string,
     workerName: string,
-    taskId: string,
+    taskId: string
   ): Promise<void> {
     const task = await (this.prisma as any).humanTask.findUnique({
       where: { id: taskId },
@@ -120,7 +110,7 @@ export class TaskWorkerService {
   async updateWorker(
     taskId: string,
     workerId: string,
-    data: { status?: "ACTIVE" | "INACTIVE"; role?: string },
+    data: { status?: "ACTIVE" | "INACTIVE"; role?: string }
   ) {
     const worker = await (this.prisma as any).humanWorker.findFirst({
       where: { id: workerId, humanTaskId: taskId },
@@ -139,7 +129,8 @@ export class TaskWorkerService {
 
     if (data.status && data.status !== worker.status) {
       this.notifyStatusChange(workerId, worker.name, worker.humanTask.name, data.status).catch(
-        (err) => this.logger.warn(`Status notification failed for worker ${workerId}: ${err.message}`),
+        (err) =>
+          this.logger.warn(`Status notification failed for worker ${workerId}: ${err.message}`)
       );
     }
 
@@ -150,7 +141,7 @@ export class TaskWorkerService {
     workerId: string,
     workerName: string,
     taskName: string,
-    newStatus: string,
+    newStatus: string
   ): Promise<void> {
     let text: string;
     if (newStatus === "INACTIVE") {
@@ -171,12 +162,9 @@ export class TaskWorkerService {
     if (!worker) throw new NotFoundException("Worker not found");
 
     this.messaging
-      .sendToWorker(
-        workerId,
-        msgWorkerRemoved(worker.name, worker.humanTask.name),
-      )
+      .sendToWorker(workerId, msgWorkerRemoved(worker.name, worker.humanTask.name))
       .catch((err) =>
-        this.logger.warn(`Removal notification failed for worker ${workerId}: ${err.message}`),
+        this.logger.warn(`Removal notification failed for worker ${workerId}: ${err.message}`)
       );
 
     await (this.prisma as any).humanWorker.delete({ where: { id: workerId } });
@@ -195,8 +183,7 @@ export class TaskWorkerService {
     if (!name) throw new BadRequestException("Member name is required.");
     if (!platform) throw new BadRequestException("Platform is required.");
     if (!externalRaw) throw new BadRequestException("ID/phone is required.");
-    if (/\s/.test(externalRaw))
-      throw new BadRequestException("ID/phone cannot contain spaces.");
+    if (/\s/.test(externalRaw)) throw new BadRequestException("ID/phone cannot contain spaces.");
     if (phoneRaw && /\s/.test(phoneRaw))
       throw new BadRequestException("Phone number cannot contain spaces.");
 
@@ -207,9 +194,7 @@ export class TaskWorkerService {
       const jid = externalRaw.replace(/:.*@/, "@");
       if (/@/.test(jid)) {
         if (!/^\d{7,20}@(s\.whatsapp\.net|lid)$/.test(jid)) {
-          throw new BadRequestException(
-            "WhatsApp ID must be a valid phone number or JID.",
-          );
+          throw new BadRequestException("WhatsApp ID must be a valid phone number or JID.");
         }
         externalId = jid;
         if (!phone && jid.endsWith("@s.whatsapp.net")) {
@@ -218,18 +203,14 @@ export class TaskWorkerService {
       } else {
         const digits = externalRaw.replace(/\D/g, "");
         if (digits.length < 7 || digits.length > 20) {
-          throw new BadRequestException(
-            "WhatsApp number must be 7-20 digits.",
-          );
+          throw new BadRequestException("WhatsApp number must be 7-20 digits.");
         }
         externalId = `+${digits}`;
         phone = phone || `+${digits}`;
       }
     } else if (platform === "TELEGRAM") {
       if (!/^-?\d{4,20}$/.test(externalRaw)) {
-        throw new BadRequestException(
-          "Telegram chat/user ID must be numeric.",
-        );
+        throw new BadRequestException("Telegram chat/user ID must be numeric.");
       }
     } else if (platform === "SLACK") {
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(externalRaw)) {

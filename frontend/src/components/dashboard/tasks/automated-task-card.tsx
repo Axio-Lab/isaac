@@ -17,7 +17,11 @@ import {
 import type { AutomatedTask } from "@/hooks/useAutomatedTasks";
 import { statusColor, formatTimeHm } from "./utils";
 
-const SEP = <span className="text-border" aria-hidden>·</span>;
+const SEP = (
+  <span className="text-border" aria-hidden>
+    ·
+  </span>
+);
 
 interface AutomatedTaskCardProps {
   task: AutomatedTask;
@@ -104,9 +108,13 @@ export function AutomatedTaskCard({
                     onSelect={() => onPauseResume(task)}
                   >
                     {task.status === "ACTIVE" ? (
-                      <><Pause className="h-3 w-3" /> Pause</>
+                      <>
+                        <Pause className="h-3 w-3" /> Pause
+                      </>
                     ) : (
-                      <><Play className="h-3 w-3" /> Resume</>
+                      <>
+                        <Play className="h-3 w-3" /> Resume
+                      </>
                     )}
                   </DropdownMenu.Item>
                 )}

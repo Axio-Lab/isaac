@@ -8,13 +8,7 @@ export const EVIDENCE_TYPES = [
   "ANY",
 ] as const;
 
-export const RECURRENCE_TYPES = [
-  "ONCE",
-  "DAILY",
-  "WEEKLY",
-  "MONTHLY",
-  "CUSTOM",
-] as const;
+export const RECURRENCE_TYPES = ["ONCE", "DAILY", "WEEKLY", "MONTHLY", "CUSTOM"] as const;
 
 export const REPORT_DOC_TYPES = ["none", "googledocs", "notion"] as const;
 
@@ -150,6 +144,8 @@ export interface TaskFormData {
   timezone: string;
   taskChannelId: string;
   acceptanceRules: string[];
+  sampleEvidenceUrl: string;
+  submissionMode: "single" | "multi";
   requiredItems: RequiredItemEntry[];
   scoringEnabled: boolean;
   passingScore: number;
@@ -181,6 +177,8 @@ export const defaultForm: TaskFormData = {
   timezone: getBrowserTimezone(),
   taskChannelId: "",
   acceptanceRules: [""],
+  sampleEvidenceUrl: "",
+  submissionMode: "single",
   requiredItems: [],
   scoringEnabled: true,
   passingScore: 70,

@@ -4,7 +4,7 @@ import { msgVettingFeedback } from "@/channels/bot-messages";
 import { getTaskInstructions } from "@/agent/isaac-system-prompt";
 
 async function downloadImageAsBase64(
-  url: string,
+  url: string
 ): Promise<{ base64: string; mediaType: string } | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
@@ -27,21 +27,13 @@ function parseVettingJson(text: string): {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return null;
   try {
-    const cleaned = jsonMatch[0]
-      .replace(/,\s*([\]}])/g, "$1")
-      .replace(/[\x00-\x1F]+/g, " ");
+    const cleaned = jsonMatch[0].replace(/,\s*([\]}])/g, "$1").replace(/[\x00-\x1F]+/g, " ");
     const parsed = JSON.parse(cleaned);
     return {
       score: typeof parsed.score === "number" ? parsed.score : 50,
-      passed:
-        typeof parsed.passed === "boolean"
-          ? parsed.passed
-          : parsed.score >= 70,
+      passed: typeof parsed.passed === "boolean" ? parsed.passed : parsed.score >= 70,
       findings: Array.isArray(parsed.findings) ? parsed.findings : [],
-      summary:
-        typeof parsed.summary === "string"
-          ? parsed.summary
-          : "Evaluation completed",
+      summary: typeof parsed.summary === "string" ? parsed.summary : "Evaluation completed",
     };
   } catch {
     return null;
@@ -52,11 +44,13 @@ function parseVettingJson(text: string): {
 export class TaskVettingService {
   private readonly logger = new Logger(TaskVettingService.name);
 
-  private generateText: ((opts: {
-    systemPrompt: string;
-    userPrompt: string;
-    images?: Array<{ base64: string; mediaType: string }>;
-  }) => Promise<{ text: string }>) | null = null;
+  private generateText:
+    | ((opts: {
+        systemPrompt: string;
+        userPrompt: string;
+        images?: Array<{ base64: string; mediaType: string }>;
+      }) => Promise<{ text: string }>)
+    | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -65,16 +59,14 @@ export class TaskVettingService {
       systemPrompt: string;
       userPrompt: string;
       images?: Array<{ base64: string; mediaType: string }>;
-    }) => Promise<{ text: string }>,
+    }) => Promise<{ text: string }>
   ) {
     this.generateText = fn;
   }
 
   async vetSubmission(submissionId: string): Promise<string> {
     if (!this.generateText) {
-      throw new Error(
-        "AI text generation is not configured. Call setGenerateText first.",
-      );
+      throw new Error("AI text generation is not configured. Call setGenerateText first.");
     }
 
     const submission = await (this.prisma as any).taskSubmission.findUnique({
@@ -131,9 +123,7 @@ export class TaskVettingService {
       };
     }
 
-    const passed =
-      result.passed ||
-      result.score >= (submission.humanTask.passingScore || 70);
+    const passed = result.passed || result.score >= (submission.humanTask.passingScore || 70);
     const status = passed ? "APPROVED" : "REJECTED";
 
     await (this.prisma as any).taskSubmission.update({
@@ -152,14 +142,14 @@ export class TaskVettingService {
       result.findings,
       result.summary,
       !passed && !!submission.humanTask.resubmissionAllowed,
-      !passed ? rules : undefined,
+      !passed ? rules : undefined
     );
   }
 
   private async buildSingleItemPrompt(
     submission: any,
     rulesText: string,
-    images: Array<{ base64: string; mediaType: string }>,
+    images: Array<{ base64: string; mediaType: string }>
   ): Promise<string> {
     let userPrompt = `Evaluate this evidence against these acceptance rules:\n\n${rulesText}\n\n`;
 
@@ -197,7 +187,7 @@ export class TaskVettingService {
     submission: any,
     items: any[],
     rulesText: string,
-    images: Array<{ base64: string; mediaType: string }>,
+    images: Array<{ base64: string; mediaType: string }>
   ): Promise<string> {
     const requiredItems: Array<{ label: string; evidenceType: string; referenceUrl?: string }> =
       Array.isArray(submission.humanTask.requiredItems) ? submission.humanTask.requiredItems : [];

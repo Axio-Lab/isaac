@@ -80,13 +80,10 @@ export function ChannelDialogForm({
         <div className="px-3 py-2 rounded-lg border border-border bg-muted/30 text-xs text-muted-foreground">
           {form.whatsappNumber ? (
             <span>
-              Connected as{" "}
-              <strong className="text-foreground">+{form.whatsappNumber}</strong>
+              Connected as <strong className="text-foreground">+{form.whatsappNumber}</strong>
             </span>
           ) : (
-            <span>
-              Not connected — use Reconnect from the channel menu to pair again.
-            </span>
+            <span>Not connected — use Reconnect from the channel menu to pair again.</span>
           )}
         </div>
       )}
@@ -113,9 +110,7 @@ export function ChannelDialogForm({
               type="password"
               autoComplete="off"
               value={form.botToken}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, botToken: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, botToken: e.target.value }))}
               className={inputClass}
               placeholder={
                 isEdit && form.hasStoredTelegramToken
@@ -148,9 +143,7 @@ export function ChannelDialogForm({
               type="password"
               autoComplete="off"
               value={form.botToken}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, botToken: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, botToken: e.target.value }))}
               className={inputClass}
               placeholder={
                 isEdit && form.hasStoredDiscordToken
@@ -183,9 +176,7 @@ export function ChannelDialogForm({
               type="password"
               autoComplete="off"
               value={form.botToken}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, botToken: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, botToken: e.target.value }))}
               className={inputClass}
               placeholder={
                 isEdit && form.hasStoredSlackToken
@@ -217,11 +208,7 @@ export function ChannelDialogForm({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-          {isEdit
-            ? "Save changes"
-            : isWhatsApp
-              ? "Create & connect"
-              : "Add channel"}
+          {isEdit ? "Save changes" : isWhatsApp ? "Create & connect" : "Add channel"}
         </button>
       </div>
     </form>

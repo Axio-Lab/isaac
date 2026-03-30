@@ -19,13 +19,11 @@ import {
 export class InboundMessageService {
   private readonly logger = new Logger(InboundMessageService.name);
 
-  private vetSubmission:
-    | ((submissionId: string) => Promise<string>)
-    | null = null;
+  private vetSubmission: ((submissionId: string) => Promise<string>) | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly messaging: ChannelMessagingService,
+    private readonly messaging: ChannelMessagingService
   ) {}
 
   setVetSubmission(fn: (submissionId: string) => Promise<string>) {
@@ -53,7 +51,7 @@ export class InboundMessageService {
   private async handleHelp(
     channelId: string,
     externalIds: string[],
-    text?: string,
+    text?: string
   ): Promise<boolean> {
     const trimmed = (text || "").trim().toLowerCase();
     if (trimmed !== "help") return false;
@@ -107,7 +105,7 @@ export class InboundMessageService {
 
     await this.messaging.sendToWorker(
       worker.id,
-      msgHelpResponse(worker.name, info, worker.status, pendingInfo),
+      msgHelpResponse(worker.name, info, worker.status, pendingInfo)
     );
     return true;
   }
@@ -117,7 +115,7 @@ export class InboundMessageService {
   private async handleOnboarding(
     channelId: string,
     externalIds: string[],
-    text?: string,
+    text?: string
   ): Promise<boolean> {
     const worker = await (this.prisma as any).humanWorker.findFirst({
       where: {
@@ -134,7 +132,7 @@ export class InboundMessageService {
     if (worker.humanTask.status === "ARCHIVED") {
       await this.messaging.sendToWorker(
         worker.id,
-        msgCannotSubmitTaskArchived(worker.name, worker.humanTask.name),
+        msgCannotSubmitTaskArchived(worker.name, worker.humanTask.name)
       );
       return true;
     }
@@ -147,13 +145,10 @@ export class InboundMessageService {
       this.logger.log(`Worker ${worker.name} (${worker.id}) activated via "ready" reply`);
       await this.messaging.sendToWorker(
         worker.id,
-        msgOnboardingSuccess(worker.name, worker.humanTask.name),
+        msgOnboardingSuccess(worker.name, worker.humanTask.name)
       );
     } else {
-      await this.messaging.sendToWorker(
-        worker.id,
-        msgOnboardingPrompt(worker.name),
-      );
+      await this.messaging.sendToWorker(worker.id, msgOnboardingPrompt(worker.name));
     }
 
     return true;
@@ -167,7 +162,7 @@ export class InboundMessageService {
     externalIds: string[],
     rawExternalId: string,
     text?: string,
-    imageUrl?: string,
+    imageUrl?: string
   ): Promise<void> {
     const worker = await (this.prisma as any).humanWorker.findFirst({
       where: {
@@ -180,7 +175,7 @@ export class InboundMessageService {
 
     if (!worker) {
       this.logger.debug(
-        `No worker found for externalId=${rawExternalId} (candidates: ${externalIds.join(", ")}) on channel=${channelId}`,
+        `No worker found for externalId=${rawExternalId} (candidates: ${externalIds.join(", ")}) on channel=${channelId}`
       );
       return;
     }
@@ -188,7 +183,7 @@ export class InboundMessageService {
     if (worker.humanTask.status === "ARCHIVED") {
       await this.messaging.sendToWorker(
         worker.id,
-        msgCannotSubmitTaskArchived(worker.name, worker.humanTask.name),
+        msgCannotSubmitTaskArchived(worker.name, worker.humanTask.name)
       );
       return;
     }
@@ -216,7 +211,7 @@ export class InboundMessageService {
 
       await this.messaging.sendToWorker(
         worker.id,
-        msgNoPendingSubmission(worker.name, task.name, times, tz),
+        msgNoPendingSubmission(worker.name, task.name, times, tz)
       );
       return;
     }
@@ -236,7 +231,9 @@ export class InboundMessageService {
         data: updateData,
       });
 
-      this.logger.log(`Submission ${pendingSubmission.id} received from worker ${worker.name} (${platform})`);
+      this.logger.log(
+        `Submission ${pendingSubmission.id} received from worker ${worker.name} (${platform})`
+      );
       await this.sendVettingFeedback(worker, pendingSubmission.id);
       return;
     }
@@ -249,7 +246,13 @@ export class InboundMessageService {
       });
       await (this.prisma as any).taskSubmission.update({
         where: { id: pendingSubmission.id },
-        data: { status: "PENDING", aiScore: null, aiFindings: null, aiFeedback: null, submittedAt: null },
+        data: {
+          status: "PENDING",
+          aiScore: null,
+          aiFindings: null,
+          aiFeedback: null,
+          submittedAt: null,
+        },
       });
       for (const it of items) {
         it.imageUrl = null;
@@ -284,14 +287,21 @@ export class InboundMessageService {
       });
       await this.messaging.sendToWorker(
         worker.id,
-        msgItemReceived(nextItem.label, receivedCount, totalCount, nextPending?.label ?? "next item"),
+        msgItemReceived(
+          nextItem.label,
+          receivedCount,
+          totalCount,
+          nextPending?.label ?? "next item"
+        )
       );
     } else {
       await (this.prisma as any).taskSubmission.update({
         where: { id: pendingSubmission.id },
         data: { status: "SUBMITTED", submittedAt: new Date() },
       });
-      this.logger.log(`All ${totalCount} items received for submission ${pendingSubmission.id} from worker ${worker.name}`);
+      this.logger.log(
+        `All ${totalCount} items received for submission ${pendingSubmission.id} from worker ${worker.name}`
+      );
       await this.messaging.sendToWorker(worker.id, msgAllItemsReceived(worker.name));
       await this.sendVettingFeedback(worker, pendingSubmission.id);
     }
@@ -301,10 +311,7 @@ export class InboundMessageService {
 
   private async sendVettingFeedback(worker: any, submissionId: string): Promise<void> {
     if (!this.vetSubmission) {
-      await this.messaging.sendToWorker(
-        worker.id,
-        msgSubmissionReceived(worker.name),
-      );
+      await this.messaging.sendToWorker(worker.id, msgSubmissionReceived(worker.name));
       return;
     }
 
@@ -313,10 +320,7 @@ export class InboundMessageService {
       await this.messaging.sendToWorker(worker.id, feedback);
     } catch (err: any) {
       this.logger.error(`Vetting failed for submission ${submissionId}`, err);
-      await this.messaging.sendToWorker(
-        worker.id,
-        msgSubmissionReceivedReview(worker.name),
-      );
+      await this.messaging.sendToWorker(worker.id, msgSubmissionReceivedReview(worker.name));
     }
   }
 }

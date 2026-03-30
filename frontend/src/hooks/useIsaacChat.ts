@@ -103,8 +103,8 @@ export function useIsaacChat() {
                     prev.map((m) =>
                       m.id === assistantId
                         ? { ...m, content: m.content + (event.content || "") }
-                        : m,
-                    ),
+                        : m
+                    )
                   );
                   break;
 
@@ -114,16 +114,14 @@ export function useIsaacChat() {
                       m.id === assistantId
                         ? {
                             ...m,
-                            content:
-                              m.content +
-                              `\n\n_Using tool: ${event.name || "unknown"}_\n\n`,
+                            content: m.content + `\n\n_Using tool: ${event.name || "unknown"}_\n\n`,
                             metadata: {
                               ...m.metadata,
                               lastTool: event.name,
                             },
                           }
-                        : m,
-                    ),
+                        : m
+                    )
                   );
                   break;
 
@@ -133,8 +131,8 @@ export function useIsaacChat() {
                       prev.map((m) =>
                         m.id === assistantId
                           ? { ...m, content: m.content + (event.content || "") }
-                          : m,
-                      ),
+                          : m
+                      )
                     );
                   }
                   break;
@@ -150,22 +148,21 @@ export function useIsaacChat() {
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        const message =
-          err instanceof Error ? err.message : "Failed to send message";
+        const message = err instanceof Error ? err.message : "Failed to send message";
         toast.error(message);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
               ? { ...m, content: m.content || "_Error: could not get a response._" }
-              : m,
-          ),
+              : m
+          )
         );
       } finally {
         setIsStreaming(false);
         abortRef.current = null;
       }
     },
-    [isStreaming, messages, planMode],
+    [isStreaming, messages, planMode]
   );
 
   return {

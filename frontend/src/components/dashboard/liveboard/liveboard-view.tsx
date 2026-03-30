@@ -129,46 +129,57 @@ export function LiveboardView() {
       ) : (
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          {paginatedSubmissions.map((sub) => (
-            <button
-              key={sub.id}
-              type="button"
-              onClick={() => setSelectedSubmission(sub)}
-              className="text-left border border-border rounded-xl p-3.5 bg-card hover:border-primary/20 transition-all duration-150"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground">{sub.worker?.name || "Unknown"}</span>
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium border ${submissionStatusColor(sub.status)}`}
-                >
-                  {sub.status}
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">Due: {new Date(sub.dueAt).toLocaleString()}</p>
-              {sub.submittedAt && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Submitted: {new Date(sub.submittedAt).toLocaleString()}
-                </p>
-              )}
-              {sub.aiScore != null && (
-                <p className="text-[10px] mt-1.5 text-muted-foreground">
-                  Isaac scored this submission{" "}
-                  <span className={sub.aiScore >= 70 ? "text-success font-medium" : "text-destructive font-medium"}>
-                    {sub.aiScore}%
+            {paginatedSubmissions.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setSelectedSubmission(sub)}
+                className="text-left border border-border rounded-xl p-3.5 bg-card hover:border-primary/20 transition-all duration-150"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-foreground">
+                    {sub.worker?.name || "Unknown"}
                   </span>
-                </p>
-              )}
-              {(sub.items?.length ?? 0) > 0 ? (
-                <p className="text-[10px] text-muted-foreground mt-1.5">
-                  Items: {sub.items!.filter((it) => it.receivedAt != null).length}/{sub.items!.length} received
-                </p>
-              ) : sub.imageUrl ? (
-                <div className="mt-2.5 h-16 bg-muted rounded-lg overflow-hidden">
-                  <img src={sub.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium border ${submissionStatusColor(sub.status)}`}
+                  >
+                    {sub.status}
+                  </span>
                 </div>
-              ) : null}
-            </button>
-          ))}
+                <p className="text-[10px] text-muted-foreground">
+                  Due: {new Date(sub.dueAt).toLocaleString()}
+                </p>
+                {sub.submittedAt && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Submitted: {new Date(sub.submittedAt).toLocaleString()}
+                  </p>
+                )}
+                {sub.aiScore != null && (
+                  <p className="text-[10px] mt-1.5 text-muted-foreground">
+                    Isaac scored this submission{" "}
+                    <span
+                      className={
+                        sub.aiScore >= 70
+                          ? "text-success font-medium"
+                          : "text-destructive font-medium"
+                      }
+                    >
+                      {sub.aiScore}%
+                    </span>
+                  </p>
+                )}
+                {(sub.items?.length ?? 0) > 0 ? (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    Items: {sub.items!.filter((it) => it.receivedAt != null).length}/
+                    {sub.items!.length} received
+                  </p>
+                ) : sub.imageUrl ? (
+                  <div className="mt-2.5 h-16 bg-muted rounded-lg overflow-hidden">
+                    <img src={sub.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
+                  </div>
+                ) : null}
+              </button>
+            ))}
           </div>
           <AppPagination
             page={submissionPage}
@@ -179,7 +190,10 @@ export function LiveboardView() {
         </div>
       )}
 
-      <SubmissionDetailDialog submission={selectedSubmission} onClose={() => setSelectedSubmission(null)} />
+      <SubmissionDetailDialog
+        submission={selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+      />
     </div>
   );
 }

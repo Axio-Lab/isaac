@@ -5,8 +5,7 @@ import { useSession } from "@/lib/auth-client";
 export function useAuth() {
   const session = useSession();
 
-  const isAuthenticated =
-    !!session.data?.user && !!session.data.user.emailVerified;
+  const isAuthenticated = !!session.data?.user && !!session.data.user.emailVerified;
 
   return {
     user: session.data?.user ?? null,

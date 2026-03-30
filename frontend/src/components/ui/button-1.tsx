@@ -9,13 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
+        primary:
+          "bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary/90",
         mono: "bg-zinc-950 text-white dark:bg-zinc-300 dark:text-black hover:bg-zinc-950/90 dark:hover:bg-zinc-300/90",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/90",
-        outline: "bg-background text-accent-foreground border border-input hover:bg-accent data-[state=open]:bg-accent",
-        dashed: "text-accent-foreground border border-input border-dashed bg-background hover:bg-accent",
-        ghost: "text-accent-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent",
+        outline:
+          "bg-background text-accent-foreground border border-input hover:bg-accent data-[state=open]:bg-accent",
+        dashed:
+          "text-accent-foreground border border-input border-dashed bg-background hover:bg-accent",
+        ghost:
+          "text-accent-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent",
         dim: "text-muted-foreground hover:text-foreground",
         foreground: "",
         inverse: "",
@@ -35,7 +39,8 @@ const buttonVariants = cva(
         default: "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         icon: "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         link: "text-primary h-auto p-0 bg-transparent rounded-none hover:bg-transparent",
-        input: "justify-start font-normal hover:bg-background focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30",
+        input:
+          "justify-start font-normal hover:bg-background focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30",
       },
       placeholder: { true: "text-muted-foreground", false: "" },
     },
@@ -79,7 +84,18 @@ function Button({
     <Comp
       data-slot="button"
       className={cn(
-        buttonVariants({ variant, size, shape, appearance, mode, autoHeight, placeholder, underlined, underline, className }),
+        buttonVariants({
+          variant,
+          size,
+          shape,
+          appearance,
+          mode,
+          autoHeight,
+          placeholder,
+          underlined,
+          underline,
+          className,
+        }),
         asChild && props.disabled && "pointer-events-none opacity-50"
       )}
       {...(selected && { "data-state": "open" })}

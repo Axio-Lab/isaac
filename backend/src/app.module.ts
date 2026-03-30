@@ -38,7 +38,7 @@ export class AppModule implements NestModule, OnModuleInit {
     private readonly agentService: AgentService,
     private readonly vettingService: TaskVettingService,
     private readonly reportService: TaskReportService,
-    private readonly inboundService: InboundMessageService,
+    private readonly inboundService: InboundMessageService
   ) {}
 
   configure(_consumer: MiddlewareConsumer) {}
@@ -51,7 +51,7 @@ export class AppModule implements NestModule, OnModuleInit {
     this.reportService.setGenerateText(generateText);
 
     this.inboundService.setVetSubmission((submissionId) =>
-      this.vettingService.vetSubmission(submissionId),
+      this.vettingService.vetSubmission(submissionId)
     );
 
     console.log("[Isaac] AI vetting + report generation wired up");

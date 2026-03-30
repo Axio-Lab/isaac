@@ -13,7 +13,7 @@ export class TaskSubmissionService {
       date?: string;
       dateFrom?: string;
       dateTo?: string;
-    },
+    }
   ) {
     const where: Record<string, unknown> = { humanTaskId: taskId };
     if (filters?.workerId) where.workerId = filters.workerId;
@@ -71,10 +71,7 @@ export class TaskSubmissionService {
     });
   }
 
-  async updateSubmission(
-    submissionId: string,
-    data: { status?: string; aiScore?: number },
-  ) {
+  async updateSubmission(submissionId: string, data: { status?: string; aiScore?: number }) {
     const submission = await (this.prisma as any).taskSubmission.findUnique({
       where: { id: submissionId },
     });
@@ -86,11 +83,7 @@ export class TaskSubmissionService {
     });
   }
 
-  async getSubmissionsForReport(
-    taskId: string,
-    periodStart: Date,
-    periodEnd: Date,
-  ) {
+  async getSubmissionsForReport(taskId: string, periodStart: Date, periodEnd: Date) {
     return (this.prisma as any).taskSubmission.findMany({
       where: {
         humanTaskId: taskId,

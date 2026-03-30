@@ -33,11 +33,7 @@ const navItems = [
   { href: "/connected-apps", label: "Connected Apps", icon: Plug },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
@@ -68,7 +64,7 @@ export default function DashboardLayout({
   if (!isAuthenticated) return null;
 
   const currentPage = navItems.find(
-    (item) => pathname === item.href || pathname.startsWith(item.href + "/"),
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
   );
 
   return (
@@ -88,13 +84,7 @@ export default function DashboardLayout({
         <div className="flex items-center justify-between h-13 px-4 border-b border-border shrink-0">
           <Link href="/tasks" className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <img
-                src="/images/isaac-mark.svg"
-                alt=""
-                className="h-4 w-4"
-                width={16}
-                height={16}
-              />
+              <img src="/images/isaac-mark.svg" alt="" className="h-4 w-4" width={16} height={16} />
             </div>
             <span className="text-sm font-semibold tracking-tight text-foreground">Isaac</span>
           </Link>
@@ -131,17 +121,11 @@ export default function DashboardLayout({
         <div className="p-3 border-t border-border shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="h-7 w-7 rounded-full bg-linear-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center text-[10px] font-semibold shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() ||
-                user?.email?.charAt(0)?.toUpperCase() ||
-                "?"}
+              {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">
-                {user?.name || "User"}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate">
-                {user?.email}
-              </p>
+              <p className="text-xs font-medium text-foreground truncate">{user?.name || "User"}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
             </div>
             <button
               onClick={toggleTheme}
@@ -195,7 +179,9 @@ export default function DashboardLayout({
         </header>
 
         <main className="flex-1 overflow-hidden relative">
-          <div data-scroll-container className="absolute inset-0 overflow-y-auto">{children}</div>
+          <div data-scroll-container className="absolute inset-0 overflow-y-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

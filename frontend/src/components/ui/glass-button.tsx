@@ -37,34 +37,20 @@ const glassButtonTextVariants = cva(
 );
 
 export interface GlassButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof glassButtonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof glassButtonVariants> {
   contentClassName?: string;
 }
 
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
   ({ className, children, size, contentClassName, ...props }, ref) => {
     return (
-      <div
-        className={cn(
-          "glass-button-wrap flex min-w-0 cursor-pointer rounded-full",
-          className
-        )}
-      >
+      <div className={cn("glass-button-wrap flex min-w-0 cursor-pointer rounded-full", className)}>
         <button
-          className={cn(
-            "glass-button min-w-0 w-full",
-            glassButtonVariants({ size })
-          )}
+          className={cn("glass-button min-w-0 w-full", glassButtonVariants({ size }))}
           ref={ref}
           {...props}
         >
-          <span
-            className={cn(
-              glassButtonTextVariants({ size }),
-              contentClassName
-            )}
-          >
+          <span className={cn(glassButtonTextVariants({ size }), contentClassName)}>
             {children}
           </span>
         </button>

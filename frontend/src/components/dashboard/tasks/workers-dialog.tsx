@@ -63,12 +63,7 @@ interface WorkersDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function WorkersDialog({
-  taskId,
-  platform,
-  open,
-  onOpenChange,
-}: WorkersDialogProps) {
+export function WorkersDialog({ taskId, platform, open, onOpenChange }: WorkersDialogProps) {
   const { data, isLoading } = useTaskWorkers(taskId);
   const addWorker = useAddWorker();
   const updateWorker = useUpdateWorker();
@@ -80,15 +75,12 @@ export function WorkersDialog({
 
   const workers: HumanWorker[] = Array.isArray(data)
     ? data
-    : (data as { workers?: HumanWorker[] })?.workers ?? [];
+    : ((data as { workers?: HumanWorker[] })?.workers ?? []);
 
-  const workersTotalPages = Math.max(
-    1,
-    Math.ceil(workers.length / WORKERS_PAGE_SIZE),
-  );
+  const workersTotalPages = Math.max(1, Math.ceil(workers.length / WORKERS_PAGE_SIZE));
   const pagedWorkers = workers.slice(
     (workersPage - 1) * WORKERS_PAGE_SIZE,
-    workersPage * WORKERS_PAGE_SIZE,
+    workersPage * WORKERS_PAGE_SIZE
   );
 
   useEffect(() => {
@@ -199,102 +191,96 @@ export function WorkersDialog({
             ) : workers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <UserPlus className="h-6 w-6 text-muted-foreground/40 mb-2" />
-                <p className="text-[11px] text-muted-foreground">
-                  No workers yet. Add one above.
-                </p>
+                <p className="text-[11px] text-muted-foreground">No workers yet. Add one above.</p>
               </div>
             ) : (
               <>
-              <div className="space-y-1.5">
-                {pagedWorkers.map((w) => {
-                  const isRemoving =
-                    removeWorker.isPending &&
-                    removeWorker.variables?.workerId === w.id;
-                  const isToggling =
-                    updateWorker.isPending &&
-                    updateWorker.variables?.workerId === w.id;
-                  const canToggle = w.status === "ACTIVE" || w.status === "INACTIVE";
+                <div className="space-y-1.5">
+                  {pagedWorkers.map((w) => {
+                    const isRemoving =
+                      removeWorker.isPending && removeWorker.variables?.workerId === w.id;
+                    const isToggling =
+                      updateWorker.isPending && updateWorker.variables?.workerId === w.id;
+                    const canToggle = w.status === "ACTIVE" || w.status === "INACTIVE";
 
-                  return (
-                    <div
-                      key={w.id}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border bg-background"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">
-                            {w.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground font-mono truncate">
-                            {w.externalId}
-                          </p>
+                    return (
+                      <div
+                        key={w.id}
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border bg-background"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{w.name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono truncate">
+                              {w.externalId}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full text-[8px] font-medium border ${statusColor(w.status)}`}
-                        >
-                          {w.status}
-                        </span>
-                        {canToggle && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[8px] font-medium border ${statusColor(w.status)}`}
+                          >
+                            {w.status}
+                          </span>
+                          {canToggle && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateWorker.mutate({
+                                  taskId,
+                                  workerId: w.id,
+                                  name: w.name,
+                                  data: {
+                                    status: w.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                                  },
+                                })
+                              }
+                              disabled={updateWorker.isPending || removeWorker.isPending}
+                              className="p-1 rounded-md hover:bg-muted text-muted-foreground transition-colors disabled:opacity-50"
+                              title={w.status === "ACTIVE" ? "Pause worker" : "Activate worker"}
+                            >
+                              {isToggling ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : w.status === "ACTIVE" ? (
+                                <Pause className="h-3 w-3" />
+                              ) : (
+                                <Play className="h-3 w-3" />
+                              )}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() =>
-                              updateWorker.mutate({
+                              removeWorker.mutate({
                                 taskId,
                                 workerId: w.id,
                                 name: w.name,
-                                data: {
-                                  status: w.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
-                                },
                               })
                             }
-                            disabled={updateWorker.isPending || removeWorker.isPending}
-                            className="p-1 rounded-md hover:bg-muted text-muted-foreground transition-colors disabled:opacity-50"
-                            title={w.status === "ACTIVE" ? "Pause worker" : "Activate worker"}
+                            disabled={removeWorker.isPending || updateWorker.isPending}
+                            className="p-1 rounded-md hover:bg-muted text-destructive transition-colors disabled:opacity-50"
+                            title="Remove worker"
                           >
-                            {isToggling ? (
+                            {isRemoving ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : w.status === "ACTIVE" ? (
-                              <Pause className="h-3 w-3" />
                             ) : (
-                              <Play className="h-3 w-3" />
+                              <Trash2 className="h-3 w-3" />
                             )}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeWorker.mutate({
-                              taskId,
-                              workerId: w.id,
-                              name: w.name,
-                            })
-                          }
-                          disabled={removeWorker.isPending || updateWorker.isPending}
-                          className="p-1 rounded-md hover:bg-muted text-destructive transition-colors disabled:opacity-50"
-                          title="Remove worker"
-                        >
-                          {isRemoving ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {workersTotalPages > 1 && (
-                <div className="mt-4 pb-1">
-                  <AppPagination
-                    page={workersPage}
-                    totalPages={workersTotalPages}
-                    onPageChange={setWorkersPage}
-                  />
+                    );
+                  })}
                 </div>
-              )}
+                {workersTotalPages > 1 && (
+                  <div className="mt-4 pb-1">
+                    <AppPagination
+                      page={workersPage}
+                      totalPages={workersTotalPages}
+                      onPageChange={setWorkersPage}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>

@@ -51,7 +51,9 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl shadow-2xl w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto p-5 z-50"
         >
           <div className="flex items-center justify-between mb-4">
-            <Dialog.Title className="text-sm font-semibold text-foreground">Submission Details</Dialog.Title>
+            <Dialog.Title className="text-sm font-semibold text-foreground">
+              Submission Details
+            </Dialog.Title>
             <Dialog.Close asChild>
               <button className="p-1 rounded-md hover:bg-muted text-muted-foreground">
                 <X className="h-3.5 w-3.5" />
@@ -73,7 +75,9 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
               ].map(([label, value]) => (
                 <div key={String(label)} className="flex items-center justify-between gap-2">
                   <span className="text-[11px] text-muted-foreground shrink-0">{label}</span>
-                  <span className="text-[11px] font-medium text-foreground text-right">{value}</span>
+                  <span className="text-[11px] font-medium text-foreground text-right">
+                    {value}
+                  </span>
                 </div>
               ))}
 
@@ -89,7 +93,9 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                   className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium border ${submissionStatusColor(submission.status)}`}
                 >
                   {submission.status}
-                  {submission.status === "COLLECTING" && isMultiItem && ` (${receivedCount}/${items.length})`}
+                  {submission.status === "COLLECTING" &&
+                    isMultiItem &&
+                    ` (${receivedCount}/${items.length})`}
                 </span>
               </div>
 
@@ -102,7 +108,9 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                     {items.map((item) => (
                       <div key={item.id} className="rounded-lg border border-border p-2.5">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-medium text-foreground">{item.label}</span>
+                          <span className="text-[11px] font-medium text-foreground">
+                            {item.label}
+                          </span>
                           {item.receivedAt ? (
                             <span className="text-[9px] text-success">
                               {new Date(item.receivedAt).toLocaleTimeString()}
@@ -112,10 +120,16 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                           )}
                         </div>
                         {item.rawMessage && (
-                          <p className="text-[10px] text-muted-foreground mb-1">{item.rawMessage}</p>
+                          <p className="text-[10px] text-muted-foreground mb-1">
+                            {item.rawMessage}
+                          </p>
                         )}
                         {item.imageUrl && (
-                          <img src={item.imageUrl} alt={item.label} className="rounded-md w-full max-h-32 object-cover" />
+                          <img
+                            src={item.imageUrl}
+                            alt={item.label}
+                            className="rounded-md w-full max-h-32 object-cover"
+                          />
                         )}
                       </div>
                     ))}
@@ -123,7 +137,7 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                 </div>
               )}
 
-              {(submission.aiFindings != null && submission.aiFindings !== "") && (
+              {submission.aiFindings != null && submission.aiFindings !== "" && (
                 <div>
                   <span className="text-[11px] text-muted-foreground block mb-1">
                     Findings against acceptance criteria
@@ -150,21 +164,33 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
 
               {feedback && (
                 <div>
-                  <span className="text-[11px] text-muted-foreground block mb-1">Isaac&apos;s feedback</span>
-                  <p className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed">{feedback}</p>
+                  <span className="text-[11px] text-muted-foreground block mb-1">
+                    Isaac&apos;s feedback
+                  </span>
+                  <p className="text-[11px] bg-muted p-2.5 rounded-lg leading-relaxed">
+                    {feedback}
+                  </p>
                 </div>
               )}
 
               {!isMultiItem && submission.rawMessage && (
                 <div>
                   <span className="text-[11px] text-muted-foreground block mb-1">Raw Message</span>
-                  <p className="text-[11px] bg-muted p-2.5 rounded-lg whitespace-pre-wrap">{submission.rawMessage}</p>
+                  <p className="text-[11px] bg-muted p-2.5 rounded-lg whitespace-pre-wrap">
+                    {submission.rawMessage}
+                  </p>
                 </div>
               )}
               {!isMultiItem && submission.imageUrl && (
                 <div>
-                  <span className="text-[11px] text-muted-foreground block mb-1">Submitted evidence</span>
-                  <img src={submission.imageUrl} alt="Submitted evidence" className="rounded-lg w-full" />
+                  <span className="text-[11px] text-muted-foreground block mb-1">
+                    Submitted evidence
+                  </span>
+                  <img
+                    src={submission.imageUrl}
+                    alt="Submitted evidence"
+                    className="rounded-lg w-full"
+                  />
                 </div>
               )}
             </div>

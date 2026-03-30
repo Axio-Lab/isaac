@@ -55,10 +55,7 @@ export function ChannelsView() {
     return channels.slice(start, start + CHANNELS_PAGE_SIZE);
   }, [channels, page]);
 
-  async function runChannelAction(
-    channelId: string,
-    action: () => Promise<unknown>,
-  ) {
+  async function runChannelAction(channelId: string, action: () => Promise<unknown>) {
     setMenuBusyChannelId(channelId);
     try {
       await action();
@@ -155,13 +152,11 @@ export function ChannelsView() {
                 }}
                 onDisconnect={() =>
                   runChannelAction(channel.id, () =>
-                    disconnectChannel.mutateAsync({ id: channel.id }),
+                    disconnectChannel.mutateAsync({ id: channel.id })
                   )
                 }
                 onTest={() =>
-                  runChannelAction(channel.id, () =>
-                    testChannel.mutateAsync({ id: channel.id }),
-                  )
+                  runChannelAction(channel.id, () => testChannel.mutateAsync({ id: channel.id }))
                 }
                 onRefresh={() => {
                   if (channel.platform === "WHATSAPP" && channel.status !== "connected") {
@@ -174,7 +169,7 @@ export function ChannelsView() {
                     setDialogOpen(true);
                   } else {
                     void runChannelAction(channel.id, () =>
-                      refreshChannel.mutateAsync({ id: channel.id }),
+                      refreshChannel.mutateAsync({ id: channel.id })
                     );
                   }
                 }}
@@ -210,7 +205,7 @@ export function ChannelsView() {
         onConfirm={async () => {
           if (!channelPendingDelete) return;
           await runChannelAction(channelPendingDelete.id, () =>
-            deleteChannel.mutateAsync({ id: channelPendingDelete.id }),
+            deleteChannel.mutateAsync({ id: channelPendingDelete.id })
           );
         }}
       />

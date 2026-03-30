@@ -60,7 +60,9 @@ export function AppDetailPanel({ slug, onClose }: AppDetailPanelProps) {
                               {action.name.replace(/_/g, " ")}
                             </p>
                             {action.description && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{action.description}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                                {action.description}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -86,7 +88,9 @@ export function AppDetailPanel({ slug, onClose }: AppDetailPanelProps) {
                               {trigger.name.replace(/_/g, " ")}
                             </p>
                             {trigger.description && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{trigger.description}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                                {trigger.description}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -95,9 +99,12 @@ export function AppDetailPanel({ slug, onClose }: AppDetailPanelProps) {
                   </div>
                 )}
 
-                {(!app?.actions || app.actions.length === 0) && (!app?.triggers || app.triggers.length === 0) && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No tools available for this app yet.</p>
-                )}
+                {(!app?.actions || app.actions.length === 0) &&
+                  (!app?.triggers || app.triggers.length === 0) && (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      No tools available for this app yet.
+                    </p>
+                  )}
               </div>
             )}
           </div>

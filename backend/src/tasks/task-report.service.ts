@@ -1,27 +1,35 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
-import {
-  getZonedDayBoundsUtc,
-  isValidIanaTimeZone,
-} from "@/common/lib/taskTimezone";
+import { getZonedDayBoundsUtc, isValidIanaTimeZone } from "@/common/lib/taskTimezone";
 import { ReportDeliveryService } from "@/reports/report-delivery.service";
 import { TaskSubmissionService } from "./task-submission.service";
 import { getTaskInstructions } from "@/agent/isaac-system-prompt";
+
+/** Counts as pass for compliance rate (aligned with liveboard). */
+const PASS_STATUSES = new Set(["APPROVED", "VETTED"]);
+
+/**
+ * Submissions with a known outcome for pass rate: vetting result or missed slot.
+ * Excludes SUBMITTED/COLLECTING/PENDING so pending vetting does not force 0%.
+ */
+const PASS_RATE_DENOM_STATUSES = new Set(["APPROVED", "REJECTED", "VETTED", "MISSED"]);
 
 @Injectable()
 export class TaskReportService {
   private readonly logger = new Logger(TaskReportService.name);
 
-  private generateText: ((opts: {
-    systemPrompt: string;
-    userPrompt: string;
-    images?: Array<{ base64: string; mediaType: string }>;
-  }) => Promise<{ text: string }>) | null = null;
+  private generateText:
+    | ((opts: {
+        systemPrompt: string;
+        userPrompt: string;
+        images?: Array<{ base64: string; mediaType: string }>;
+      }) => Promise<{ text: string }>)
+    | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly submissionService: TaskSubmissionService,
-    private readonly reportDelivery: ReportDeliveryService,
+    private readonly reportDelivery: ReportDeliveryService
   ) {}
 
   setGenerateText(
@@ -29,7 +37,7 @@ export class TaskReportService {
       systemPrompt: string;
       userPrompt: string;
       images?: Array<{ base64: string; mediaType: string }>;
-    }) => Promise<{ text: string }>,
+    }) => Promise<{ text: string }>
   ) {
     this.generateText = fn;
   }
@@ -44,36 +52,32 @@ export class TaskReportService {
     const now = new Date();
     const tzRaw = task.timezone || "UTC";
     const tz = isValidIanaTimeZone(tzRaw) ? tzRaw : "UTC";
-    const { start: periodStart, end: periodEnd } = getZonedDayBoundsUtc(
-      now,
-      tz,
-    );
+    const { start: periodStart, end: periodEnd } = getZonedDayBoundsUtc(now, tz);
 
     const submissions = await this.submissionService.getSubmissionsForReport(
       taskId,
       periodStart,
-      periodEnd,
+      periodEnd
     );
 
     const totalDue = submissions.length;
     const submitted = submissions.filter(
-      (s: any) => s.status !== "PENDING" && s.status !== "MISSED",
+      (s: any) => s.status !== "PENDING" && s.status !== "MISSED"
     ).length;
-    const missed = submissions.filter(
-      (s: any) => s.status === "MISSED",
-    ).length;
+    const missed = submissions.filter((s: any) => s.status === "MISSED").length;
     const scores = submissions
       .filter((s: any) => s.aiScore != null)
       .map((s: any) => s.aiScore as number);
     const avgScore =
-      scores.length > 0
-        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-        : null;
-    const passed = submissions.filter(
-      (s: any) => s.status === "APPROVED",
-    ).length;
+      scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+    const passRateDenominator = submissions.filter((s: any) =>
+      PASS_RATE_DENOM_STATUSES.has(s.status)
+    );
+    const passedCount = passRateDenominator.filter((s: any) => PASS_STATUSES.has(s.status)).length;
     const passRate =
-      totalDue > 0 ? Math.round((passed / totalDue) * 100) : null;
+      passRateDenominator.length > 0
+        ? Math.round((passedCount / passRateDenominator.length) * 100)
+        : null;
 
     const workerMap: Record<
       string,
@@ -99,10 +103,8 @@ export class TaskReportService {
       }
       workerMap[w.id].due++;
       if ((sub as any).status === "MISSED") workerMap[w.id].missed++;
-      else if ((sub as any).status !== "PENDING")
-        workerMap[w.id].submitted++;
-      if ((sub as any).aiScore != null)
-        workerMap[w.id].scores.push((sub as any).aiScore);
+      else if ((sub as any).status !== "PENDING") workerMap[w.id].submitted++;
+      if ((sub as any).aiScore != null) workerMap[w.id].scores.push((sub as any).aiScore);
     }
 
     const flaggedWorkerIds: string[] = [];
@@ -111,10 +113,7 @@ export class TaskReportService {
         w.scores.length > 0
           ? Math.round(w.scores.reduce((a, b) => a + b, 0) / w.scores.length)
           : null;
-      if (
-        w.missed >= 2 ||
-        (wAvg !== null && wAvg < (task.passingScore || 70))
-      ) {
+      if (w.missed >= 2 || (wAvg !== null && wAvg < (task.passingScore || 70))) {
         flaggedWorkerIds.push(id);
       }
       return `${w.name}: ${w.submitted}/${w.due} submitted${w.missed > 0 ? ` (${w.missed} missed)` : ""}, avg ${wAvg ?? "N/A"}`;
@@ -134,7 +133,7 @@ export class TaskReportService {
         systemPrompt: getTaskInstructions("report"),
         userPrompt: reportData,
       });
-      summaryMarkdown = text;
+      summaryMarkdown = this.cleanReportOutput(text);
     } else {
       summaryMarkdown =
         `# Daily Report: ${task.name}\n\n` +
@@ -201,6 +200,7 @@ export class TaskReportService {
     if (shouldCreateDoc) {
       const documentType = rawDocType === "notion" ? "notion" : "google_doc";
       const folderId = (dc.reportFolderId as string) || task.reportFolderId || undefined;
+      this.logger.log(`Creating ${documentType} for task ${taskId} (reportDocType=${rawDocType})`);
       try {
         docUrl = await this.reportDelivery.createReportDocument({
           userId,
@@ -209,9 +209,16 @@ export class TaskReportService {
           documentType,
           folderId,
         });
+        if (docUrl) {
+          this.logger.log(`Document created: ${docUrl}`);
+        } else {
+          this.logger.warn(`Document creation returned no URL for task ${taskId}`);
+        }
       } catch (err: any) {
         this.logger.warn(`Document creation failed for task ${taskId}: ${err.message}`);
       }
+    } else {
+      this.logger.debug(`Skipping doc creation: reportDocType="${rawDocType}"`);
     }
 
     let deliveryResults: Record<string, boolean> | null = null;
@@ -240,9 +247,11 @@ export class TaskReportService {
           summary,
           null,
           userId,
-          deliveryConfig,
+          deliveryConfig
         );
-        this.logger.log(`Report delivery results for task ${taskId}: ${JSON.stringify(deliveryResults)}`);
+        this.logger.log(
+          `Report delivery results for task ${taskId}: ${JSON.stringify(deliveryResults)}`
+        );
       } catch (err: any) {
         this.logger.error(`Report delivery failed for task ${taskId}: ${err.message}`);
       }
@@ -303,10 +312,7 @@ export class TaskReportService {
   }
 
   private extractMarkdownSection(full: string, title: string): string | null {
-    const re = new RegExp(
-      `^##\\s*${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
-      "im",
-    );
+    const re = new RegExp(`^##\\s*${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "im");
     const m = full.match(re);
     if (!m || m.index === undefined) return null;
     const start = m.index + m[0].length;
@@ -315,6 +321,24 @@ export class TaskReportService {
     const body = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
     const trimmed = body.trim();
     return trimmed.length > 0 ? trimmed : null;
+  }
+
+  /**
+   * Strip AI preamble, tool invocation XML, and other non-report content from
+   * the model output so only the actual markdown report is stored.
+   */
+  private cleanReportOutput(raw: string): string {
+    let cleaned = raw
+      .replace(/<invoke[\s\S]*?<\/invoke>/g, "")
+      .replace(/<\/?[a-z_-]+(?:\s[^>]*)?>/gi, "")
+      .trim();
+
+    const headingIdx = cleaned.search(/^##\s+/m);
+    if (headingIdx > 0) {
+      cleaned = cleaned.slice(headingIdx);
+    }
+
+    return cleaned.trim();
   }
 
   /** First prose block before any ## heading (legacy reports without Worker Review). */
@@ -332,9 +356,7 @@ export class TaskReportService {
   }
 
   async getReport(reportId: string) {
-    const report = await (
-      this.prisma as any
-    ).taskComplianceReport.findUnique({
+    const report = await (this.prisma as any).taskComplianceReport.findUnique({
       where: { id: reportId },
     });
     if (!report) throw new NotFoundException("Report not found");
@@ -342,9 +364,7 @@ export class TaskReportService {
   }
 
   async deleteReport(reportId: string) {
-    const report = await (
-      this.prisma as any
-    ).taskComplianceReport.findUnique({
+    const report = await (this.prisma as any).taskComplianceReport.findUnique({
       where: { id: reportId },
     });
     if (!report) throw new NotFoundException("Report not found");

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authenticatedFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -120,11 +116,7 @@ export function useCreateChannel() {
 
 export function useUpdateChannel() {
   const queryClient = useQueryClient();
-  return useMutation<
-    TaskChannel,
-    Error,
-    { id: string; data: Record<string, unknown> }
-  >({
+  return useMutation<TaskChannel, Error, { id: string; data: Record<string, unknown> }>({
     mutationFn: ({ id, data }) =>
       fetchJson(`/api/task-channels/${id}`, {
         method: "PUT",
@@ -141,8 +133,7 @@ export function useUpdateChannel() {
 export function useDeleteChannel() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      fetchJson(`/api/task-channels/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id }) => fetchJson(`/api/task-channels/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-channels"] });
       toast.success("Channel deleted");
@@ -154,8 +145,7 @@ export function useDeleteChannel() {
 export function useDisconnectChannel() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      fetchJson(`/api/task-channels/${id}/disconnect`, { method: "POST" }),
+    mutationFn: ({ id }) => fetchJson(`/api/task-channels/${id}/disconnect`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-channels"] });
       toast.success("Channel disconnected");
@@ -166,8 +156,7 @@ export function useDisconnectChannel() {
 
 export function useTestChannel() {
   return useMutation<ChannelTestResult, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      fetchJson(`/api/task-channels/${id}/test`, { method: "POST" }),
+    mutationFn: ({ id }) => fetchJson(`/api/task-channels/${id}/test`, { method: "POST" }),
     onSuccess: (data) => {
       toast.success(data?.message || "Test successful");
     },
@@ -178,8 +167,7 @@ export function useTestChannel() {
 export function useRefreshChannel() {
   const queryClient = useQueryClient();
   return useMutation<TaskChannel, Error, { id: string }>({
-    mutationFn: ({ id }) =>
-      fetchJson(`/api/task-channels/${id}/refresh`, { method: "POST" }),
+    mutationFn: ({ id }) => fetchJson(`/api/task-channels/${id}/refresh`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-channels"] });
       toast.success("Channel refreshed");

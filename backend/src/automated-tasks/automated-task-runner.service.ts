@@ -10,12 +10,12 @@ export class AutomatedTaskRunnerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly agentService: AgentService,
-    private readonly reportDelivery: ReportDeliveryService,
+    private readonly reportDelivery: ReportDeliveryService
   ) {}
 
   async execute(
     task: { id: string; userId: string; name: string; prompt: string; deliveryConfig?: any },
-    triggeredBy: "SCHEDULE" | "ON_DEMAND" | "CHAT",
+    triggeredBy: "SCHEDULE" | "ON_DEMAND" | "CHAT"
   ): Promise<{ runId: string; status: string; result?: string; error?: string }> {
     const run = await (this.prisma as any).automatedTaskRun.create({
       data: {
@@ -52,7 +52,7 @@ export class AutomatedTaskRunnerService {
       this.logger.log(`Automated task run ${run.id} completed for "${task.name}"`);
 
       await this.deliverResult(task, resultText).catch((err) =>
-        this.logger.warn(`Delivery failed for run ${run.id}: ${err.message}`),
+        this.logger.warn(`Delivery failed for run ${run.id}: ${err.message}`)
       );
 
       return { runId: run.id, status: "COMPLETED", result: resultText };
@@ -100,7 +100,7 @@ export class AutomatedTaskRunnerService {
       summary,
       null,
       task.userId,
-      deliveryConfig,
+      deliveryConfig
     );
 
     this.logger.log(`Delivery results for task ${task.id}: ${JSON.stringify(results)}`);

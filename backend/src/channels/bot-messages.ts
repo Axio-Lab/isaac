@@ -32,10 +32,7 @@ function formatTaskBrief(task: TaskInfoForWorker): string {
 
   const rules = (task.acceptanceRules ?? []).filter((r) => r.trim().length > 0);
   if (rules.length > 0) {
-    parts.push(
-      "*Acceptance criteria:*\n" +
-        rules.map((r, i) => `  ${i + 1}. ${r}`).join("\n"),
-    );
+    parts.push("*Acceptance criteria:*\n" + rules.map((r, i) => `  ${i + 1}. ${r}`).join("\n"));
   }
 
   const times = task.scheduledTimes ?? [];
@@ -95,7 +92,7 @@ export function msgHelpResponse(
   workerName: string,
   task: TaskInfoForWorker,
   workerStatus: string,
-  pendingInfo?: string,
+  pendingInfo?: string
 ): string {
   const parts = [
     `Hi ${workerName}, here are your task details for *"${task.name}"*:\n`,
@@ -123,7 +120,7 @@ export function msgTaskDuePrompt(
   evidenceType: string,
   dueTime: string,
   tz: string,
-  requiredItems?: Array<{ label: string; evidenceType: string }>,
+  requiredItems?: Array<{ label: string; evidenceType: string }>
 ): string {
   const items = requiredItems ?? [];
   if (items.length > 0) {
@@ -148,7 +145,7 @@ export function msgNoPendingSubmission(
   workerName: string,
   taskName: string,
   scheduledTimes: string[],
-  tz: string,
+  tz: string
 ): string {
   const scheduleLine =
     scheduledTimes.length > 0
@@ -171,7 +168,7 @@ export function msgItemReceived(
   label: string,
   received: number,
   total: number,
-  nextLabel: string,
+  nextLabel: string
 ): string {
   return `${label} received (${received}/${total}). Now send your *${nextLabel}*.`;
 }
@@ -195,7 +192,7 @@ export function msgSubmissionReceivedReview(workerName: string): string {
 export function msgSubmissionMissed(
   workerName: string,
   taskName: string,
-  dueTimeUtc: string,
+  dueTimeUtc: string
 ): string {
   return (
     `Hi ${workerName}, you missed your submission for "${taskName}" ` +
@@ -212,18 +209,15 @@ export function msgVettingFeedback(
   findings: string[],
   summary: string,
   resubmissionAllowed: boolean,
-  acceptanceRules?: string[],
+  acceptanceRules?: string[]
 ): string {
   const header = `Score: ${score}/100 — ${passed ? "Passed!" : "Did not pass"}`;
 
   const meaningfulFindings = findings.filter((f) => f.trim().length > 0);
   const findingsBlock =
-    meaningfulFindings.length > 0
-      ? meaningfulFindings.map((f) => `- ${f}`).join("\n")
-      : "";
+    meaningfulFindings.length > 0 ? meaningfulFindings.map((f) => `- ${f}`).join("\n") : "";
 
-  const summaryBlock =
-    summary && summary !== "Evaluation completed" ? summary : "";
+  const summaryBlock = summary && summary !== "Evaluation completed" ? summary : "";
 
   const parts = [header];
 
@@ -239,15 +233,8 @@ export function msgVettingFeedback(
     parts.push("Your submission did not meet the required acceptance criteria.");
   }
 
-  if (
-    !passed &&
-    acceptanceRules &&
-    acceptanceRules.length > 0
-  ) {
-    parts.push(
-      "Acceptance rules:\n" +
-        acceptanceRules.map((r, i) => `${i + 1}. ${r}`).join("\n"),
-    );
+  if (!passed && acceptanceRules && acceptanceRules.length > 0) {
+    parts.push("Acceptance rules:\n" + acceptanceRules.map((r, i) => `${i + 1}. ${r}`).join("\n"));
   }
 
   if (!passed && resubmissionAllowed) {
@@ -297,10 +284,7 @@ export function msgTaskActivatedNotice(taskName: string): string {
   );
 }
 
-export function msgCannotSubmitTaskArchived(
-  workerName: string,
-  taskName: string,
-): string {
+export function msgCannotSubmitTaskArchived(workerName: string, taskName: string): string {
   return (
     `Hi ${workerName},\n\n` +
     `The task "${taskName}" is currently archived — submissions aren't accepted until your admin reactivates it.`

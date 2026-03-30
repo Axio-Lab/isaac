@@ -19,7 +19,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function authenticatedFetch(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<Response> {
   const headers = await getAuthHeaders();
   return fetch(`${API_URL}${path}`, {

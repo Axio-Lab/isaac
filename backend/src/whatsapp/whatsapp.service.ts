@@ -18,8 +18,7 @@ import pino from "pino";
 /** Baileys uses Pino; Nest `Logger` is not compatible (missing `.trace`). Set `WHATSAPP_BAILEYS_LOG=1` to see Baileys JSON logs. */
 const baileysLogger = pino({
   level:
-    process.env.WHATSAPP_BAILEYS_LOG === "1" ||
-    process.env.WHATSAPP_BAILEYS_LOG === "debug"
+    process.env.WHATSAPP_BAILEYS_LOG === "1" || process.env.WHATSAPP_BAILEYS_LOG === "debug"
       ? "info"
       : "silent",
 });
@@ -180,7 +179,10 @@ export class WhatsAppService implements OnModuleDestroy {
             await this.startSession(channelId);
           } catch (err: any) {
             this.logger.error(`Retry failed for ${channelId}`, err);
-            subject!.next({ type: "error", message: `Connection failed (code ${statusCode}). Try again.` });
+            subject!.next({
+              type: "error",
+              message: `Connection failed (code ${statusCode}). Try again.`,
+            });
             subject!.next({ type: "close" });
           }
         }
@@ -256,7 +258,10 @@ export class WhatsAppService implements OnModuleDestroy {
     return this.doSendTest(sock, phone);
   }
 
-  private async doSendTest(sock: WASocket, phone: string): Promise<{ success: boolean; message: string }> {
+  private async doSendTest(
+    sock: WASocket,
+    phone: string
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const jid = `${phone}@s.whatsapp.net`;
       await sock.sendMessage(jid, {
@@ -272,11 +277,7 @@ export class WhatsAppService implements OnModuleDestroy {
   /**
    * Send a text message to an arbitrary JID through a connected session.
    */
-  async sendMessage(
-    channelId: string,
-    jid: string,
-    text: string,
-  ): Promise<void> {
+  async sendMessage(channelId: string, jid: string, text: string): Promise<void> {
     let sock = this.sessions.get(channelId);
     if (!sock) {
       const channel = await this.db.taskChannel.findUnique({

@@ -125,10 +125,4 @@ function AppPagination({ page, totalPages, onPageChange, className }: AppPaginat
   );
 }
 
-export {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  AppPagination,
-};
+export { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, AppPagination };

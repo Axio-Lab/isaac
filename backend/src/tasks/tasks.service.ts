@@ -1,14 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { ChannelMessagingService } from "@/channels/channel-messaging.service";
-import {
-  msgTaskArchivedNotice,
-  msgTaskActivatedNotice,
-} from "@/channels/bot-messages";
+import { msgTaskArchivedNotice, msgTaskActivatedNotice } from "@/channels/bot-messages";
 import { assertTaskNameUniqueForUser } from "./task-name-uniqueness";
 
 export interface HumanTaskCreateInput {
@@ -40,7 +33,7 @@ export type HumanTaskUpdateInput = Partial<HumanTaskCreateInput> & {
 export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly messaging: ChannelMessagingService,
+    private readonly messaging: ChannelMessagingService
   ) {}
 
   async listTasks(userId: string, page = 1, limit = 20) {
@@ -57,13 +50,7 @@ export class TasksService {
               submissions: {
                 where: {
                   status: {
-                    in: [
-                      "SUBMITTED",
-                      "VETTED",
-                      "APPROVED",
-                      "REJECTED",
-                      "RESUBMITTED",
-                    ],
+                    in: ["SUBMITTED", "VETTED", "APPROVED", "REJECTED", "RESUBMITTED"],
                   },
                 },
               },
@@ -111,8 +98,7 @@ export class TasksService {
     const taskName = String(data.name).trim();
     await assertTaskNameUniqueForUser(this.prisma, userId, taskName);
 
-    const channelId =
-      data.reportChannelId?.trim() || null;
+    const channelId = data.reportChannelId?.trim() || null;
 
     return (this.prisma as any).humanTask.create({
       data: {
@@ -139,33 +125,21 @@ export class TasksService {
     });
   }
 
-  async updateTask(
-    userId: string,
-    taskId: string,
-    data: HumanTaskUpdateInput,
-  ) {
+  async updateTask(userId: string, taskId: string, data: HumanTaskUpdateInput) {
     if (Object.keys(data).length > 0) {
       this.validatePayload(data, "update");
     }
 
     const raw = data as Record<string, unknown>;
-    const {
-      reportChannelId,
-      taskChannelId: incomingTaskChannelId,
-      ...rest
-    } = raw;
+    const { reportChannelId, taskChannelId: incomingTaskChannelId, ...rest } = raw;
 
     const prismaData: Record<string, unknown> = { ...rest };
 
     if (reportChannelId !== undefined || incomingTaskChannelId !== undefined) {
       const channelId =
-        incomingTaskChannelId !== undefined
-          ? incomingTaskChannelId
-          : reportChannelId;
+        incomingTaskChannelId !== undefined ? incomingTaskChannelId : reportChannelId;
       const trimmed =
-        channelId != null && String(channelId).trim()
-          ? String(channelId).trim()
-          : null;
+        channelId != null && String(channelId).trim() ? String(channelId).trim() : null;
       prismaData.taskChannelId = trimmed;
       prismaData.reportChannelId = null;
     }
@@ -200,10 +174,7 @@ export class TasksService {
       where: { id: taskId },
       data: { status: "ARCHIVED" },
     });
-    await this.messaging.broadcastToTask(
-      taskId,
-      msgTaskArchivedNotice(task.name),
-    );
+    await this.messaging.broadcastToTask(taskId, msgTaskArchivedNotice(task.name));
     return { success: true };
   }
 
@@ -214,18 +185,13 @@ export class TasksService {
     });
     if (!task) throw new NotFoundException("Task not found");
     if (task.status !== "ARCHIVED") {
-      throw new BadRequestException(
-        "Only archived tasks can be reactivated this way",
-      );
+      throw new BadRequestException("Only archived tasks can be reactivated this way");
     }
     await (this.prisma as any).humanTask.update({
       where: { id: taskId },
       data: { status: "ACTIVE" },
     });
-    await this.messaging.broadcastToTask(
-      taskId,
-      msgTaskActivatedNotice(task.name),
-    );
+    await this.messaging.broadcastToTask(taskId, msgTaskActivatedNotice(task.name));
     return { success: true };
   }
 
@@ -272,10 +238,7 @@ export class TasksService {
     return { success: true };
   }
 
-  private validatePayload(
-    data: Partial<HumanTaskCreateInput>,
-    mode: "create" | "update",
-  ) {
+  private validatePayload(data: Partial<HumanTaskCreateInput>, mode: "create" | "update") {
     if (mode === "create") {
       if (!data.name || !String(data.name).trim()) {
         throw new BadRequestException("Task name is required");
@@ -284,23 +247,19 @@ export class TasksService {
         ? data.acceptanceRules.map((r) => String(r).trim()).filter(Boolean)
         : [];
       if (rules.length === 0) {
-        throw new BadRequestException(
-          "At least one acceptance rule is required",
-        );
+        throw new BadRequestException("At least one acceptance rule is required");
       }
       if (!data.reportChannelId || !String(data.reportChannelId).trim()) {
         throw new BadRequestException(
-          "Notification channel is required for worker messages and reminders",
+          "Notification channel is required for worker messages and reminders"
         );
       }
       const recurrence = data.recurrenceType ?? "DAILY";
-      const times = Array.isArray(data.scheduledTimes)
-        ? data.scheduledTimes
-        : [];
+      const times = Array.isArray(data.scheduledTimes) ? data.scheduledTimes : [];
       if (recurrence === "DAILY" || recurrence === "WEEKLY") {
         if (times.length === 0 || !times.some((t) => String(t).trim())) {
           throw new BadRequestException(
-            "At least one scheduled time is required for daily or weekly tasks",
+            "At least one scheduled time is required for daily or weekly tasks"
           );
         }
       }
@@ -316,41 +275,29 @@ export class TasksService {
           ? data.acceptanceRules.map((r) => String(r).trim()).filter(Boolean)
           : [];
         if (rules.length === 0) {
-          throw new BadRequestException(
-            "At least one acceptance rule is required",
-          );
+          throw new BadRequestException("At least one acceptance rule is required");
         }
       }
       if ("reportChannelId" in data && data.reportChannelId !== undefined) {
         if (!data.reportChannelId || !String(data.reportChannelId).trim()) {
           throw new BadRequestException(
-            "Notification channel is required for worker messages and reminders",
+            "Notification channel is required for worker messages and reminders"
           );
         }
       }
-      if (
-        data.recurrenceType === "DAILY" ||
-        data.recurrenceType === "WEEKLY"
-      ) {
+      if (data.recurrenceType === "DAILY" || data.recurrenceType === "WEEKLY") {
         if (data.scheduledTimes !== undefined) {
-          const times = Array.isArray(data.scheduledTimes)
-            ? data.scheduledTimes
-            : [];
+          const times = Array.isArray(data.scheduledTimes) ? data.scheduledTimes : [];
           if (times.length === 0 || !times.some((t) => String(t).trim())) {
             throw new BadRequestException(
-              "At least one scheduled time is required for daily or weekly tasks",
+              "At least one scheduled time is required for daily or weekly tasks"
             );
           }
         }
       }
-      if (
-        data.recurrenceType === "INTERVAL" &&
-        data.recurrenceInterval !== undefined
-      ) {
+      if (data.recurrenceType === "INTERVAL" && data.recurrenceInterval !== undefined) {
         if (!data.recurrenceInterval || data.recurrenceInterval < 1) {
-          throw new BadRequestException(
-            "Interval must be at least 1 minute",
-          );
+          throw new BadRequestException("Interval must be at least 1 minute");
         }
       }
     }

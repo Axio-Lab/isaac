@@ -49,7 +49,7 @@ export interface AgentQueryOptions {
 export class AgentService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly composioService: ComposioService,
+    private readonly composioService: ComposioService
   ) {}
 
   private getModel(override?: string): string {
@@ -84,8 +84,8 @@ export class AgentService {
               isError: true,
             };
           }
-        },
-      ),
+        }
+      )
     );
   }
 

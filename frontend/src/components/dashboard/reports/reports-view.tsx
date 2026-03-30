@@ -11,15 +11,7 @@ import {
 } from "@/hooks/useHumanTasks";
 import type { TaskComplianceReport } from "@/hooks/useHumanTasks";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import {
-  Loader2,
-  MoreVertical,
-  FileText,
-  Trash2,
-  Eye,
-  RefreshCw,
-  Send,
-} from "lucide-react";
+import { Loader2, MoreVertical, FileText, Trash2, Eye, RefreshCw, Send } from "lucide-react";
 import { GlassButton } from "@/components/ui/glass-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ReportDetailDialog } from "./report-detail-dialog";
@@ -96,7 +88,9 @@ export function ReportsView() {
       </div>
 
       <div className="mb-6">
-        <label className="block text-[10px] font-medium text-muted-foreground mb-1.5">Select Task</label>
+        <label className="block text-[10px] font-medium text-muted-foreground mb-1.5">
+          Select Task
+        </label>
         <select
           value={selectedTaskId}
           onChange={(e) => setSelectedTaskId(e.target.value)}
@@ -124,7 +118,9 @@ export function ReportsView() {
         </div>
       ) : reports.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-xs text-muted-foreground">No reports yet. Click &quot;Generate&quot; to create one.</p>
+          <p className="text-xs text-muted-foreground">
+            No reports yet. Click &quot;Generate&quot; to create one.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -132,111 +128,119 @@ export function ReportsView() {
             const isResendingThis =
               resendReport.isPending && resendReport.variables?.reportId === report.id;
             return (
-            <div
-              key={report.id}
-              className="border border-border rounded-xl p-4 bg-card hover:border-border/80 transition-all duration-150"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
-                    <p className="text-xs font-medium text-foreground">
-                      {new Date(report.periodStart).toLocaleDateString()} &mdash;{" "}
-                      {new Date(report.periodEnd).toLocaleDateString()}
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      Generated{" "}
-                      {new Date(report.createdAt).toLocaleString(undefined, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
-                    <span>
-                      Submissions:{" "}
-                      <span className="font-medium text-foreground">{report.totalSubmissions}</span>
-                    </span>
-                    <span>
-                      Missed: <span className="font-medium text-destructive">{report.missedCount}</span>
-                    </span>
-                    {report.avgScore != null && (
-                      <span>
-                        Avg Score: <span className="font-medium text-foreground">{report.avgScore.toFixed(1)}</span>
+              <div
+                key={report.id}
+                className="border border-border rounded-xl p-4 bg-card hover:border-border/80 transition-all duration-150"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
+                      <p className="text-xs font-medium text-foreground">
+                        {new Date(report.periodStart).toLocaleDateString()} &mdash;{" "}
+                        {new Date(report.periodEnd).toLocaleDateString()}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground">
+                        Generated{" "}
+                        {new Date(report.createdAt).toLocaleString(undefined, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
                       </span>
-                    )}
-                    {report.passRate != null && (
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
                       <span>
-                        Pass Rate:{" "}
-                        <span className="font-medium text-foreground">{(report.passRate * 100).toFixed(0)}%</span>
+                        Submissions:{" "}
+                        <span className="font-medium text-foreground">
+                          {report.totalSubmissions}
+                        </span>
                       </span>
-                    )}
-                    <span>
-                      {report.deliveredAt ? (
-                        <span className="font-medium text-success">Delivered</span>
-                      ) : (
-                        <span className="font-medium text-warning">Not delivered</span>
+                      <span>
+                        Missed:{" "}
+                        <span className="font-medium text-destructive">{report.missedCount}</span>
+                      </span>
+                      {report.avgScore != null && (
+                        <span>
+                          Avg Score:{" "}
+                          <span className="font-medium text-foreground">
+                            {report.avgScore.toFixed(1)}
+                          </span>
+                        </span>
                       )}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  {isResendingThis && (
-                    <Loader2
-                      className="h-4 w-4 animate-spin text-muted-foreground"
-                      aria-label="Resending report"
-                    />
-                  )}
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger asChild>
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors"
-                    >
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </button>
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content
-                      className="min-w-[140px] bg-popover text-popover-foreground border border-border rounded-lg shadow-xl p-1 z-50"
-                      sideOffset={4}
-                      align="end"
-                    >
-                      <DropdownMenu.Item
-                        className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted"
-                        onSelect={() => setSelectedReport(report)}
-                      >
-                        <Eye className="h-3 w-3" /> View
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted"
-                        onSelect={() =>
-                          resendReport.mutate({
-                            taskId: selectedTaskId,
-                            reportId: report.id,
-                          })
-                        }
-                        disabled={isResendingThis}
-                      >
-                        {isResendingThis ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
+                      {report.passRate != null && (
+                        <span>
+                          Pass Rate:{" "}
+                          <span className="font-medium text-foreground">
+                            {report.passRate.toFixed(0)}%
+                          </span>
+                        </span>
+                      )}
+                      <span>
+                        {report.deliveredAt ? (
+                          <span className="font-medium text-success">Delivered</span>
                         ) : (
-                          <Send className="h-3 w-3" />
-                        )}{" "}
-                        Resend
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted text-destructive"
-                        onSelect={() => setReportPendingDelete(report)}
-                      >
-                        <Trash2 className="h-3 w-3" /> Delete
-                      </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Root>
+                          <span className="font-medium text-warning">Not delivered</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isResendingThis && (
+                      <Loader2
+                        className="h-4 w-4 animate-spin text-muted-foreground"
+                        aria-label="Resending report"
+                      />
+                    )}
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger asChild>
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors"
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </button>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Portal>
+                        <DropdownMenu.Content
+                          className="min-w-[140px] bg-popover text-popover-foreground border border-border rounded-lg shadow-xl p-1 z-50"
+                          sideOffset={4}
+                          align="end"
+                        >
+                          <DropdownMenu.Item
+                            className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted"
+                            onSelect={() => setSelectedReport(report)}
+                          >
+                            <Eye className="h-3 w-3" /> View
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted"
+                            onSelect={() =>
+                              resendReport.mutate({
+                                taskId: selectedTaskId,
+                                reportId: report.id,
+                              })
+                            }
+                            disabled={isResendingThis}
+                          >
+                            {isResendingThis ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="h-3 w-3" />
+                            )}{" "}
+                            Resend
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md cursor-pointer outline-none hover:bg-muted text-destructive"
+                            onSelect={() => setReportPendingDelete(report)}
+                          >
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Portal>
+                    </DropdownMenu.Root>
+                  </div>
                 </div>
               </div>
-            </div>
             );
           })}
           <AppPagination

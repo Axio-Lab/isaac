@@ -28,7 +28,7 @@ export class TasksController {
     private readonly workerService: TaskWorkerService,
     private readonly submissionService: TaskSubmissionService,
     private readonly reportService: TaskReportService,
-    private readonly agentService: AgentService,
+    private readonly agentService: AgentService
   ) {}
 
   // ─── AI Fill ──────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export class TasksController {
       taskType?: "HUMAN" | "AUTOMATED";
       /** UPPERCASE Composio app names the user already connected (e.g. from the UI) */
       connectedAppNames?: string[];
-    },
+    }
   ) {
     if (!body.prompt?.trim()) {
       return { fields: {} };
@@ -67,7 +67,10 @@ export class TasksController {
     });
 
     try {
-      const cleaned = text.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+      const cleaned = text
+        .replace(/```json?\n?/g, "")
+        .replace(/```/g, "")
+        .trim();
       const fields = JSON.parse(cleaned);
       return { fields };
     } catch {
@@ -78,11 +81,7 @@ export class TasksController {
   // ─── Tasks ────────────────────────────────────────────────────────
 
   @Get()
-  async listTasks(
-    @Req() req: any,
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-  ) {
+  async listTasks(@Req() req: any, @Query("page") page?: string, @Query("limit") limit?: string) {
     const p = page ? parseInt(page, 10) : undefined;
     const l = limit ? parseInt(limit, 10) : undefined;
     return this.tasksService.listTasks(req.userId, p, l);
@@ -102,11 +101,7 @@ export class TasksController {
   }
 
   @Put(":taskId")
-  async updateTask(
-    @Req() req: any,
-    @Param("taskId") taskId: string,
-    @Body() body: any,
-  ) {
+  async updateTask(@Req() req: any, @Param("taskId") taskId: string, @Body() body: any) {
     await this.tasksService.updateTask(req.userId, taskId, body);
     return { success: true };
   }
@@ -155,10 +150,7 @@ export class TasksController {
 
   @Post(":taskId/workers")
   @HttpCode(HttpStatus.CREATED)
-  async addWorker(
-    @Param("taskId") taskId: string,
-    @Body() body: any,
-  ) {
+  async addWorker(@Param("taskId") taskId: string, @Body() body: any) {
     const worker = await this.workerService.addWorker(taskId, body);
     return { worker };
   }
@@ -167,21 +159,14 @@ export class TasksController {
   async updateWorker(
     @Param("taskId") taskId: string,
     @Param("workerId") workerId: string,
-    @Body() body: any,
+    @Body() body: any
   ) {
-    const worker = await this.workerService.updateWorker(
-      taskId,
-      workerId,
-      body,
-    );
+    const worker = await this.workerService.updateWorker(taskId, workerId, body);
     return { success: true, worker };
   }
 
   @Delete(":taskId/workers/:workerId")
-  async removeWorker(
-    @Param("taskId") taskId: string,
-    @Param("workerId") workerId: string,
-  ) {
+  async removeWorker(@Param("taskId") taskId: string, @Param("workerId") workerId: string) {
     await this.workerService.removeWorker(taskId, workerId);
     return { success: true };
   }
@@ -195,7 +180,7 @@ export class TasksController {
     @Query("status") status?: string,
     @Query("date") date?: string,
     @Query("dateFrom") dateFrom?: string,
-    @Query("dateTo") dateTo?: string,
+    @Query("dateTo") dateTo?: string
   ) {
     const submissions = await this.submissionService.listSubmissions(taskId, {
       workerId,
@@ -217,19 +202,9 @@ export class TasksController {
 
   @Post(":taskId/reports/generate")
   @HttpCode(HttpStatus.OK)
-  async generateReport(
-    @Req() req: any,
-    @Param("taskId") taskId: string,
-  ) {
-    const report = await this.reportService.generateDailyReport(
-      taskId,
-      req.userId,
-    );
-    const delivered = await this.reportService.deliverAndRecord(
-      report.id,
-      taskId,
-      req.userId,
-    );
+  async generateReport(@Req() req: any, @Param("taskId") taskId: string) {
+    const report = await this.reportService.generateDailyReport(taskId, req.userId);
+    const delivered = await this.reportService.deliverAndRecord(report.id, taskId, req.userId);
     return { report: delivered };
   }
 
@@ -238,13 +213,9 @@ export class TasksController {
   async resendReport(
     @Req() req: any,
     @Param("taskId") taskId: string,
-    @Param("reportId") reportId: string,
+    @Param("reportId") reportId: string
   ) {
-    const report = await this.reportService.deliverAndRecord(
-      reportId,
-      taskId,
-      req.userId,
-    );
+    const report = await this.reportService.deliverAndRecord(reportId, taskId, req.userId);
     return { success: true, report };
   }
 

@@ -26,17 +26,14 @@ export function zonedWallTimeToUtc(
   hour: number,
   minute: number,
   second: number,
-  timeZone: string,
+  timeZone: string
 ): Date {
   const naiveUtcMs = Date.UTC(year, month - 1, day, hour, minute, second, 0);
   const offsetMin = getOffsetMinutes(new Date(naiveUtcMs), timeZone);
   return new Date(naiveUtcMs - offsetMin * 60 * 1000);
 }
 
-export function getZonedDayBoundsUtc(
-  anchor: Date,
-  timeZone: string,
-): { start: Date; end: Date } {
+export function getZonedDayBoundsUtc(anchor: Date, timeZone: string): { start: Date; end: Date } {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",

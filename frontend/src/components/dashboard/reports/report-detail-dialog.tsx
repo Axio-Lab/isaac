@@ -33,11 +33,7 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
               <Dialog.Title className="text-sm font-semibold text-foreground tracking-tight">
                 Compliance Report
               </Dialog.Title>
-              {report && (
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {periodLabel}
-                </p>
-              )}
+              {report && <p className="text-[11px] text-muted-foreground mt-0.5">{periodLabel}</p>}
             </div>
             <Dialog.Close asChild>
               <button className="p-1 rounded-md hover:bg-muted text-muted-foreground">
@@ -61,11 +57,7 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
                 />
                 <KpiCard
                   label="Pass Rate"
-                  value={
-                    report.passRate != null
-                      ? `${(report.passRate * 100).toFixed(0)}%`
-                      : "N/A"
-                  }
+                  value={report.passRate != null ? `${report.passRate.toFixed(0)}%` : "N/A"}
                 />
               </div>
 
@@ -88,16 +80,12 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
                       </h3>
                     ),
                     p: ({ children }) => (
-                      <p className="text-xs leading-[1.7] text-muted-foreground mb-3">
-                        {children}
-                      </p>
+                      <p className="text-xs leading-[1.7] text-muted-foreground mb-3">{children}</p>
                     ),
                     strong: ({ children }) => (
                       <strong className="font-semibold text-foreground">{children}</strong>
                     ),
-                    em: ({ children }) => (
-                      <em className="italic">{children}</em>
-                    ),
+                    em: ({ children }) => <em className="italic">{children}</em>,
                     ul: ({ children }) => (
                       <ul className="pl-4 mb-3 space-y-1 text-xs leading-[1.7] text-muted-foreground list-disc list-outside">
                         {children}
@@ -109,7 +97,9 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
                       </ol>
                     ),
                     li: ({ children }) => (
-                      <li className="text-xs leading-[1.7] text-muted-foreground pl-0.5">{children}</li>
+                      <li className="text-xs leading-[1.7] text-muted-foreground pl-0.5">
+                        {children}
+                      </li>
                     ),
                     table: ({ children }) => (
                       <div className="overflow-x-auto mb-4 mt-2 rounded-lg border border-border">

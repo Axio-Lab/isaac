@@ -103,9 +103,13 @@ You have direct access to task management tools via the \`isaac-tasks\` MCP serv
 ## Submissions & Evidence Vetting
 
 - **listSubmissions** — View task submissions with evidence and status
+- Tasks support single-item or multi-item submissions (e.g. kitchen photo, bathroom photo, living room photo)
+- Multi-item submissions are collected sequentially: you guide the worker through each required item one at a time
+- Each item can have a reference image that you compare against the worker's submission
 - You evaluate submitted evidence (photos, text, documents) against acceptance rules
 - You score submissions 0-100, determine pass/fail, list specific findings, and write a brief summary
 - Workers who miss deadlines or score below the passing threshold are flagged
+- Workers can send "help" at any time to get task details, acceptance criteria, and submission status
 
 ## Report Generation
 
@@ -120,7 +124,7 @@ You have direct access to task management tools via the \`isaac-tasks\` MCP serv
 ## Task Configuration Intelligence
 
 - You can infer task settings from a natural-language description
-- For human tasks: name, description, evidence type, recurrence, scheduled times, timezone, acceptance rules, scoring, grace period, report time, document type
+- For human tasks: name, description, evidence type, submission mode (single/multi), required items with labels, recurrence, scheduled times, timezone, acceptance rules, scoring, grace period, report time, document type
 - For automated tasks: name, description, agent prompt, Composio app requirements, connection suggestions, recurrence, scheduled times, timezone
 
 ## Automated Task Orchestration
@@ -197,11 +201,7 @@ export async function getIsaacSystemPrompt(userContext: UserContext): Promise<st
 
 // ─── Task-specific instructions (identity + output format) ────────────
 
-export type IsaacTask =
-  | "report"
-  | "vetting"
-  | "ai-fill-human"
-  | "ai-fill-automated";
+export type IsaacTask = "report" | "vetting" | "ai-fill-human" | "ai-fill-automated";
 
 const TASK_INSTRUCTIONS: Record<IsaacTask, string> = {
   report: `
@@ -224,12 +224,18 @@ Bullet list of problems worth noting, if any. Omit this section entirely if none
 Numbered list of specific next steps, if any. Omit this section entirely if none.
 
 Keep the entire report under 200 words. Be direct. No summary section, no overview section.
+
+CRITICAL: Output ONLY the markdown report. Do NOT include any preamble, introductory sentences, tool invocations, or commentary. Start directly with ## Worker Review.
 `.trim(),
 
   vetting: `
 OUTPUT MODE: Evidence evaluation (JSON only).
 
 Evaluate the submitted evidence against the provided acceptance rules.
+Submissions may contain a single piece of evidence or multiple labeled items (e.g. Kitchen, Bathroom, Living Room).
+When reference images are provided, compare each submitted image against its corresponding reference.
+Evaluate ALL items together to produce a single overall score.
+
 Respond with ONLY valid JSON in this exact format:
 { "score": 0-100, "passed": true/false, "findings": ["finding1", "finding2"], "summary": "brief summary" }
 
@@ -249,6 +255,7 @@ Given the user's description of a task, return ONLY valid JSON (no markdown, no 
   "scheduledTimes": ["HH:MM", ...],
   "timezone": "IANA timezone string",
   "acceptanceRules": ["string", ...],
+  "requiredItems": [{ "label": "string", "evidenceType": "PHOTO|VIDEO|TEXT|..." }, ...],
   "scoringEnabled": boolean,
   "passingScore": number (0-100),
   "graceMinutes": number,
@@ -256,6 +263,7 @@ Given the user's description of a task, return ONLY valid JSON (no markdown, no 
   "reportTime": "HH:MM",
   "reportDocType": "googledocs|notion"
 }
+If the task requires multiple evidence items per submission (e.g. photos of different areas), populate requiredItems with labeled entries. Leave requiredItems empty or omit it for single-item submissions.
 Only include fields you can confidently infer. Do NOT include taskChannelId, destinations, or reportFolderId as those are user-specific. Return ONLY the JSON object.
 `.trim(),
 
@@ -291,7 +299,7 @@ export function getTaskInstructions(task: IsaacTask): string {
 // ─── Helpers ──────────────────────────────────────────────────────────
 
 function buildComposioSection(
-  composioConnectedApps?: Array<{ id: string; appSlug: string; status: string }>,
+  composioConnectedApps?: Array<{ id: string; appSlug: string; status: string }>
 ): string {
   if (!composioConnectedApps || composioConnectedApps.length === 0) {
     return `## Composio Integrations\n\nNo Composio apps are currently connected. If the user needs external integrations (GitHub, Slack, Notion, etc.), guide them to connect the required apps first.`;
@@ -310,14 +318,14 @@ You can use these integrations to execute actions on behalf of the user (e.g., c
 }
 
 function buildUserSkillsSection(
-  userSkills?: Array<{ name: string; description?: string | null; content: string }>,
+  userSkills?: Array<{ name: string; description?: string | null; content: string }>
 ): string {
   if (!userSkills || userSkills.length === 0) return "";
 
   const skillEntries = userSkills
     .map(
       (skill) =>
-        `### ${skill.name}${skill.description ? ` — ${skill.description}` : ""}\n\n${skill.content}`,
+        `### ${skill.name}${skill.description ? ` — ${skill.description}` : ""}\n\n${skill.content}`
     )
     .join("\n\n");
 
