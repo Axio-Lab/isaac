@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service";
 import { ChannelMessagingService } from "./channel-messaging.service";
+import { EvidenceStorageService } from "../uploads/evidence-storage.service";
 import { buildExternalIdCandidates } from "./platform-utils";
 import {
   msgOnboardingSuccess,
@@ -23,7 +24,8 @@ export class InboundMessageService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly messaging: ChannelMessagingService
+    private readonly messaging: ChannelMessagingService,
+    private readonly evidenceStorage: EvidenceStorageService
   ) {}
 
   setVetSubmission(fn: (submissionId: string) => Promise<string>) {
@@ -224,7 +226,10 @@ export class InboundMessageService {
         submittedAt: new Date(),
       };
       if (text) updateData.rawMessage = text;
-      if (imageUrl) updateData.imageUrl = imageUrl;
+      if (imageUrl) {
+        const storedUrl = await this.evidenceStorage.downloadAndStore(imageUrl);
+        updateData.imageUrl = storedUrl ?? imageUrl;
+      }
 
       await (this.prisma as any).taskSubmission.update({
         where: { id: pendingSubmission.id },
@@ -268,7 +273,10 @@ export class InboundMessageService {
     }
 
     const itemUpdate: Record<string, unknown> = { receivedAt: new Date() };
-    if (imageUrl) itemUpdate.imageUrl = imageUrl;
+    if (imageUrl) {
+      const storedUrl = await this.evidenceStorage.downloadAndStore(imageUrl);
+      itemUpdate.imageUrl = storedUrl ?? imageUrl;
+    }
     if (text) itemUpdate.rawMessage = text;
 
     await (this.prisma as any).submissionItem.update({

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X, ImageOff } from "lucide-react";
 import type { TaskSubmission } from "@/hooks/useHumanTasks";
 import { submissionStatusColor } from "./submission-status";
 
@@ -21,6 +22,33 @@ function parseAiFindings(raw: string | null | undefined): string[] {
     /* not JSON */
   }
   return [raw.trim()];
+}
+
+function EvidenceImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div
+        className={`flex flex-col items-center justify-center gap-1.5 bg-muted/40 border border-border rounded-lg py-6 ${className ?? ""}`}
+      >
+        <ImageOff className="h-5 w-5 text-muted-foreground" />
+        <p className="text-[10px] text-muted-foreground">Evidence could not be loaded</p>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => {
+        console.error("[EvidenceImage] Failed to load:", { src, alt });
+        setFailed(true);
+      }}
+    />
+  );
 }
 
 function isaacFeedbackText(submission: TaskSubmission): string | null {
@@ -119,13 +147,8 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                             <span className="text-[9px] text-muted-foreground italic">Pending</span>
                           )}
                         </div>
-                        {item.rawMessage && (
-                          <p className="text-[10px] text-muted-foreground mb-1">
-                            {item.rawMessage}
-                          </p>
-                        )}
                         {item.imageUrl && (
-                          <img
+                          <EvidenceImage
                             src={item.imageUrl}
                             alt={item.label}
                             className="rounded-md w-full max-h-32 object-cover"
@@ -173,20 +196,12 @@ export function SubmissionDetailDialog({ submission, onClose }: SubmissionDetail
                 </div>
               )}
 
-              {!isMultiItem && submission.rawMessage && (
-                <div>
-                  <span className="text-[11px] text-muted-foreground block mb-1">Raw Message</span>
-                  <p className="text-[11px] bg-muted p-2.5 rounded-lg whitespace-pre-wrap">
-                    {submission.rawMessage}
-                  </p>
-                </div>
-              )}
               {!isMultiItem && submission.imageUrl && (
                 <div>
                   <span className="text-[11px] text-muted-foreground block mb-1">
                     Submitted evidence
                   </span>
-                  <img
+                  <EvidenceImage
                     src={submission.imageUrl}
                     alt="Submitted evidence"
                     className="rounded-lg w-full"

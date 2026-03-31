@@ -7,6 +7,7 @@ import {
   zonedWallTimeToUtc,
 } from "@/common/lib/taskTimezone";
 import { TaskReportService } from "./task-report.service";
+import { TaskFlagService } from "./task-flag.service";
 import { ChannelMessagingService } from "@/channels/channel-messaging.service";
 import { AutomatedTaskRunnerService } from "@/automated-tasks/automated-task-runner.service";
 import { msgTaskDuePrompt, msgSubmissionMissed } from "@/channels/bot-messages";
@@ -19,6 +20,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reportService: TaskReportService,
+    private readonly flagService: TaskFlagService,
     private readonly channelMessaging: ChannelMessagingService,
     private readonly automatedRunner: AutomatedTaskRunnerService
   ) {}
@@ -203,6 +205,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
         where: { id: sub.id },
         data: { status: "MISSED" },
       });
+      await this.flagService.flagMissedSubmission(sub.id).catch(() => {});
 
       if (sub.worker?.status === "ACTIVE") {
         await this.channelMessaging

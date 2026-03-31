@@ -35,6 +35,11 @@ export class TaskWorkerService {
           take: 1,
           select: { status: true, dueAt: true, aiScore: true },
         },
+        flagEvents: {
+          where: { status: "OPEN" },
+          orderBy: { triggeredAt: "desc" },
+          take: 3,
+        },
       },
       orderBy: { createdAt: "asc" },
     });

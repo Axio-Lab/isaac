@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { AppPagination } from "@/components/ui/pagination";
 import { useHumanTasks, useTaskSubmissions } from "@/hooks/useHumanTasks";
 import type { TaskSubmission } from "@/hooks/useHumanTasks";
-import { Loader2, Radio } from "lucide-react";
+import { Loader2, Radio, ImageOff } from "lucide-react";
 import { SubmissionDetailDialog } from "./submission-detail-dialog";
 import { submissionStatusColor } from "./submission-status";
 
@@ -174,9 +174,7 @@ export function LiveboardView() {
                     {sub.items!.length} received
                   </p>
                 ) : sub.imageUrl ? (
-                  <div className="mt-2.5 h-16 bg-muted rounded-lg overflow-hidden">
-                    <img src={sub.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
-                  </div>
+                  <LiveboardThumb src={sub.imageUrl} />
                 ) : null}
               </button>
             ))}
@@ -193,6 +191,27 @@ export function LiveboardView() {
       <SubmissionDetailDialog
         submission={selectedSubmission}
         onClose={() => setSelectedSubmission(null)}
+      />
+    </div>
+  );
+}
+
+function LiveboardThumb({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="mt-2.5 h-16 bg-muted rounded-lg flex items-center justify-center">
+        <ImageOff className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2.5 h-16 bg-muted rounded-lg overflow-hidden">
+      <img
+        src={src}
+        alt="Evidence"
+        className="h-full w-full object-cover"
+        onError={() => setFailed(true)}
       />
     </div>
   );

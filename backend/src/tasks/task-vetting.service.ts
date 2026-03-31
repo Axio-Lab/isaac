@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { msgVettingFeedback } from "@/channels/bot-messages";
 import { getTaskInstructions } from "@/agent/isaac-system-prompt";
+import { TaskFlagService } from "./task-flag.service";
 
 async function downloadImageAsBase64(
   url: string
@@ -52,7 +53,10 @@ export class TaskVettingService {
       }) => Promise<{ text: string }>)
     | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly flagService: TaskFlagService
+  ) {}
 
   setGenerateText(
     fn: (opts: {
@@ -135,6 +139,10 @@ export class TaskVettingService {
         status,
       },
     });
+
+    if (!passed) {
+      await this.flagService.flagLowScoreSubmission(submissionId).catch(() => null);
+    }
 
     return msgVettingFeedback(
       result.score,

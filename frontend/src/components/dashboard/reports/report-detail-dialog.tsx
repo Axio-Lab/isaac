@@ -61,6 +61,50 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
                 />
               </div>
 
+              {Array.isArray(report.flaggedWorkersSnapshot) &&
+                report.flaggedWorkersSnapshot.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-[13px] font-semibold text-foreground tracking-tight mb-2">
+                      Flagged Workers
+                    </h2>
+                    <div className="space-y-2">
+                      {report.flaggedWorkersSnapshot.map((flag) => (
+                        <div
+                          key={flag.id}
+                          className="rounded-lg border border-border bg-muted/20 px-3.5 py-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-semibold text-foreground">
+                                {flag.workerName}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {flag.reasonLabel}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-medium text-foreground">
+                                {flag.severity}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {new Date(flag.triggeredAt).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          {flag.details && (
+                            <p className="text-[11px] text-muted-foreground mt-2">{flag.details}</p>
+                          )}
+                          <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-muted-foreground">
+                            <span>Open flags: {flag.activeFlagCount}</span>
+                            <span>Total flags: {flag.totalFlagCount}</span>
+                            <span>Risk: {flag.riskLevel}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               <div className="report-prose">
                 <ReactMarkdown
                   components={{

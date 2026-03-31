@@ -174,6 +174,15 @@ export function ReportsView() {
                           </span>
                         </span>
                       )}
+                      {Array.isArray(report.flaggedWorkersSnapshot) &&
+                        report.flaggedWorkersSnapshot.length > 0 && (
+                          <span>
+                            Flagged:{" "}
+                            <span className="font-medium text-amber-600 dark:text-amber-400">
+                              {report.flaggedWorkersSnapshot.length}
+                            </span>
+                          </span>
+                        )}
                       <span>
                         {report.deliveredAt ? (
                           <span className="font-medium text-success">Delivered</span>

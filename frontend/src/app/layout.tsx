@@ -10,7 +10,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Isaac is the autonomous COO your business actually needs",
-  description: " Isaac is an autonomous micro-manager that scales your business operations perfectly and holds your team accountable.",
+  description:
+    " Isaac is an autonomous micro-manager that scales your business operations perfectly and holds your team accountable.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

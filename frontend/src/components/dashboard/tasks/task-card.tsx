@@ -14,6 +14,7 @@ import {
   Clock,
   FileCheck2,
   Megaphone,
+  Flag,
 } from "lucide-react";
 import type { HumanTask } from "@/hooks/useHumanTasks";
 import { PlatformChannelIcon } from "@/lib/channel-icons";
@@ -191,6 +192,15 @@ export function TaskCard({
           <Users className="h-2.5 w-2.5 shrink-0" />
           {task._count?.workers ?? 0}
         </span>
+        {typeof task.flaggedWorkerCount === "number" && task.flaggedWorkerCount > 0 && (
+          <>
+            {SEP}
+            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <Flag className="h-2.5 w-2.5 shrink-0" />
+              {task.flaggedWorkerCount}
+            </span>
+          </>
+        )}
         {SEP}
         <span>{task.recurrenceType}</span>
         {SEP}

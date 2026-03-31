@@ -8,10 +8,11 @@ import { ChannelMessagingService } from "./channel-messaging.service";
 import { InboundMessageService } from "./inbound-message.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { UploadsModule } from "../uploads/uploads.module";
 import { normalizeIncomingExternalId } from "./platform-utils";
 
 @Module({
-  imports: [WhatsAppModule],
+  imports: [WhatsAppModule, UploadsModule],
   controllers: [ChannelsController, InternalWebhookController],
   providers: [ChannelsService, ChannelMessagingService, InboundMessageService, PrismaService],
   exports: [ChannelsService, ChannelMessagingService, InboundMessageService],

@@ -18,6 +18,7 @@ import { TasksService } from "./tasks.service";
 import { TaskWorkerService } from "./task-worker.service";
 import { TaskSubmissionService } from "./task-submission.service";
 import { TaskReportService } from "./task-report.service";
+import { TaskFlagService } from "./task-flag.service";
 import { getTaskInstructions } from "@/agent/isaac-system-prompt";
 
 @Controller("human-tasks")
@@ -28,6 +29,7 @@ export class TasksController {
     private readonly workerService: TaskWorkerService,
     private readonly submissionService: TaskSubmissionService,
     private readonly reportService: TaskReportService,
+    private readonly flagService: TaskFlagService,
     private readonly agentService: AgentService
   ) {}
 
@@ -76,6 +78,17 @@ export class TasksController {
     } catch {
       return { fields: {} };
     }
+  }
+
+  // ─── Flagged Workers (user-scoped, before :taskId routes) ────────
+
+  @Get("flagged-workers")
+  async listAllFlaggedWorkers(
+    @Req() req: any,
+    @Query("status") status?: "OPEN" | "RESOLVED" | "DISMISSED"
+  ) {
+    const workers = await this.flagService.listAllFlaggedWorkers(req.userId, { status });
+    return { workers };
   }
 
   // ─── Tasks ────────────────────────────────────────────────────────
@@ -171,6 +184,22 @@ export class TasksController {
     return { success: true };
   }
 
+  @Get(":taskId/workers/flagged")
+  async listFlaggedWorkers(@Req() req: any, @Param("taskId") taskId: string) {
+    const workers = await this.flagService.listFlaggedWorkers(taskId, req.userId);
+    return { workers };
+  }
+
+  @Get(":taskId/workers/:workerId/flags")
+  async listWorkerFlags(
+    @Req() req: any,
+    @Param("taskId") taskId: string,
+    @Param("workerId") workerId: string
+  ) {
+    const flags = await this.flagService.listFlags(taskId, req.userId, { workerId });
+    return { flags };
+  }
+
   // ─── Submissions ──────────────────────────────────────────────────
 
   @Get(":taskId/submissions")
@@ -198,6 +227,41 @@ export class TasksController {
   async listReports(@Param("taskId") taskId: string) {
     const reports = await this.reportService.listReports(taskId);
     return { reports };
+  }
+
+  @Get(":taskId/flags")
+  async listFlags(
+    @Req() req: any,
+    @Param("taskId") taskId: string,
+    @Query("workerId") workerId?: string,
+    @Query("status") status?: "OPEN" | "RESOLVED" | "DISMISSED"
+  ) {
+    const flags = await this.flagService.listFlags(taskId, req.userId, { workerId, status });
+    return { flags };
+  }
+
+  @Post(":taskId/flags/:flagId/resolve")
+  @HttpCode(HttpStatus.OK)
+  async resolveFlag(
+    @Req() req: any,
+    @Param("taskId") taskId: string,
+    @Param("flagId") flagId: string,
+    @Body() body: { reason?: string; note?: string }
+  ) {
+    const flag = await this.flagService.resolveFlag(taskId, flagId, req.userId, body);
+    return { success: true, flag };
+  }
+
+  @Post(":taskId/flags/:flagId/dismiss")
+  @HttpCode(HttpStatus.OK)
+  async dismissFlag(
+    @Req() req: any,
+    @Param("taskId") taskId: string,
+    @Param("flagId") flagId: string,
+    @Body() body: { reason?: string; note?: string }
+  ) {
+    const flag = await this.flagService.dismissFlag(taskId, flagId, req.userId, body);
+    return { success: true, flag };
   }
 
   @Post(":taskId/reports/generate")

@@ -30,6 +30,7 @@ model User {
   connections    UserConnection[]
   chatMessages   ChatMessage[]
   taskChannels   TaskChannel[]
+  flagEvents     WorkerFlagEvent[]
 
   @@map("users")
 }
@@ -128,6 +129,36 @@ enum WorkerStatus {
   REMOVED
 }
 
+enum WorkerFlagReasonType {
+  MISSED_DEADLINE
+  LOW_SCORE
+  REPEATED_MISSED_DEADLINE
+  REPEATED_LOW_SCORE
+  REPEATED_REJECTION
+  QUALITY_FAILURE
+  NO_SUBMISSION
+}
+
+enum WorkerFlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WorkerFlagStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum WorkerRiskLevel {
+  HEALTHY
+  WATCHLIST
+  AT_RISK
+  CRITICAL
+}
+
 enum ChatPlatform {
   WHATSAPP
   TELEGRAM
@@ -170,6 +201,7 @@ model HumanTask {
   workers     HumanWorker[]
   submissions TaskSubmission[]
   reports     TaskComplianceReport[]
+  flagEvents  WorkerFlagEvent[]
 
   taskChannelId String?
   taskChannel   TaskChannel? @relation("TaskNotificationChannel", fields: [taskChannelId], references: [id], onDelete: SetNull)
@@ -243,11 +275,17 @@ model HumanWorker {
   taskChannel   TaskChannel? @relation("WorkerTaskChannel", fields: [taskChannelId], references: [id], onDelete: SetNull)
   role          String?
   status        WorkerStatus @default(ONBOARDING)
+  activeFlagCount Int        @default(0)
+  totalFlagCount  Int        @default(0)
+  lastFlaggedAt   DateTime?
+  lastFlagReason  String?
+  riskLevel       WorkerRiskLevel @default(HEALTHY)
   onboardedAt   DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
   submissions TaskSubmission[]
+  flagEvents   WorkerFlagEvent[]
 
   @@unique([humanTaskId, platform, externalId])
   @@index([humanTaskId])
@@ -278,6 +316,7 @@ model TaskSubmission {
   updatedAt              DateTime         @updatedAt
 
   items SubmissionItem[]
+  flagEvents WorkerFlagEvent[]
 
   @@index([humanTaskId])
   @@index([workerId])
@@ -314,14 +353,52 @@ model TaskComplianceReport {
   avgScore         Float?
   passRate         Float?
   flaggedWorkerIds String[]
+  flaggedWorkersSnapshot Json?
   documentUrl      String?
   deliveredAt      DateTime?
   deliveredTo      Json?
   createdAt        DateTime  @default(now())
 
+  flagEvents WorkerFlagEvent[]
+
   @@index([humanTaskId])
   @@index([periodStart])
   @@map("task_compliance_reports")
+}
+
+model WorkerFlagEvent {
+  id             String               @id @default(cuid())
+  userId         String
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  humanTaskId    String
+  humanTask      HumanTask            @relation(fields: [humanTaskId], references: [id], onDelete: Cascade)
+  workerId       String
+  worker         HumanWorker          @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  submissionId   String?
+  submission     TaskSubmission?      @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  reportId       String?
+  report         TaskComplianceReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  dedupeKey      String?              @unique
+  reasonType     WorkerFlagReasonType
+  reasonLabel    String
+  details        String?
+  severity       WorkerFlagSeverity   @default(MEDIUM)
+  status         WorkerFlagStatus     @default(OPEN)
+  metadata       Json?
+  triggeredAt    DateTime             @default(now())
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  resolutionReason String?
+  resolutionNote String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([humanTaskId, triggeredAt])
+  @@index([workerId, status])
+  @@index([submissionId])
+  @@index([reportId])
+  @@index([userId, status])
+  @@map("worker_flag_events")
 }
 
 // ============================================

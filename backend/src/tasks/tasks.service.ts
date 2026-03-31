@@ -44,6 +44,9 @@ export class TasksService {
         where: { userId },
         include: {
           taskChannel: { select: { id: true, platform: true, label: true } },
+          workers: {
+            select: { activeFlagCount: true },
+          },
           _count: {
             select: {
               workers: true,
@@ -64,7 +67,17 @@ export class TasksService {
       (this.prisma as any).humanTask.count({ where: { userId } }),
     ]);
 
-    return { tasks, total, page, limit };
+    return {
+      tasks: tasks.map((task: any) => ({
+        ...task,
+        flaggedWorkerCount: Array.isArray(task.workers)
+          ? task.workers.filter((worker: any) => (worker.activeFlagCount ?? 0) > 0).length
+          : 0,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async getTask(userId: string, taskId: string) {
@@ -72,6 +85,7 @@ export class TasksService {
       where: { id: taskId, userId },
       include: {
         taskChannel: { select: { id: true, platform: true, label: true } },
+        workers: { select: { activeFlagCount: true } },
         _count: {
           select: {
             workers: true,
@@ -83,7 +97,12 @@ export class TasksService {
     });
 
     if (!task) throw new NotFoundException("Task not found");
-    return task;
+    return {
+      ...task,
+      flaggedWorkerCount: Array.isArray((task as any).workers)
+        ? (task as any).workers.filter((worker: any) => (worker.activeFlagCount ?? 0) > 0).length
+        : 0,
+    };
   }
 
   async createTask(userId: string, data: HumanTaskCreateInput) {

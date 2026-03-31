@@ -37,6 +37,7 @@ export interface HumanTask {
   workers?: HumanWorker[];
   submissions?: TaskSubmission[];
   _count?: { workers: number; submissions: number; reports: number };
+  flaggedWorkerCount?: number;
 }
 
 export interface HumanWorker {
@@ -49,13 +50,52 @@ export interface HumanWorker {
   taskChannelId?: string | null;
   role?: string | null;
   status: string;
+  activeFlagCount?: number;
+  totalFlagCount?: number;
+  lastFlaggedAt?: string | null;
+  lastFlagReason?: string | null;
+  riskLevel?: string;
   onboardedAt?: string | null;
   createdAt: string;
+  flagEvents?: WorkerFlagEvent[];
   submissions?: Array<{
     status: string;
     dueAt: string;
     aiScore?: number | null;
   }>;
+}
+
+export interface WorkerFlagEvent {
+  id: string;
+  userId?: string;
+  humanTaskId: string;
+  workerId: string;
+  submissionId?: string | null;
+  reportId?: string | null;
+  reasonType: string;
+  reasonLabel: string;
+  details?: string | null;
+  severity: string;
+  status: string;
+  metadata?: Record<string, unknown> | null;
+  triggeredAt: string;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  resolutionReason?: string | null;
+  resolutionNote?: string | null;
+  worker?: {
+    id: string;
+    name: string;
+    riskLevel?: string;
+    activeFlagCount?: number;
+    totalFlagCount?: number;
+  };
+  submission?: {
+    id: string;
+    dueAt: string;
+    status: string;
+    aiScore?: number | null;
+  };
 }
 
 export interface SubmissionItem {
@@ -100,6 +140,21 @@ export interface TaskComplianceReport {
   avgScore?: number | null;
   passRate?: number | null;
   flaggedWorkerIds: string[];
+  flaggedWorkersSnapshot?: Array<{
+    id: string;
+    workerId: string;
+    workerName: string;
+    reasonType: string;
+    reasonLabel: string;
+    details?: string | null;
+    severity: string;
+    status: string;
+    triggeredAt: string;
+    activeFlagCount: number;
+    totalFlagCount: number;
+    riskLevel: string;
+    metadata?: Record<string, unknown> | null;
+  }> | null;
   documentUrl?: string | null;
   deliveredAt?: string | null;
   deliveredTo?: Record<string, unknown> | null;
@@ -343,6 +398,100 @@ export function useTaskReports(taskId: string) {
     queryKey: ["human-tasks", taskId, "reports"],
     queryFn: () => fetchJson(`/api/human-tasks/${taskId}/reports`),
     enabled: !!taskId,
+  });
+}
+
+export function useAllFlaggedWorkers(filters?: { status?: string }) {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+
+  return useQuery<{ workers: WorkerFlagEvent[] }>({
+    queryKey: ["human-tasks", "flagged-workers", filters],
+    queryFn: () => fetchJson(`/api/human-tasks/flagged-workers${qs ? `?${qs}` : ""}`),
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  });
+}
+
+export function useTaskFlags(
+  taskId: string,
+  filters?: {
+    workerId?: string;
+    status?: string;
+  }
+) {
+  const params = new URLSearchParams();
+  if (filters?.workerId) params.set("workerId", filters.workerId);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+
+  return useQuery<{ flags: WorkerFlagEvent[] }>({
+    queryKey: ["human-tasks", taskId, "flags", filters],
+    queryFn: () => fetchJson(`/api/human-tasks/${taskId}/flags${qs ? `?${qs}` : ""}`),
+    enabled: !!taskId,
+  });
+}
+
+export function useFlaggedWorkers(taskId: string) {
+  return useQuery<{ workers: HumanWorker[] }>({
+    queryKey: ["human-tasks", taskId, "workers", "flagged"],
+    queryFn: () => fetchJson(`/api/human-tasks/${taskId}/workers/flagged`),
+    enabled: !!taskId,
+  });
+}
+
+export function useWorkerFlags(taskId: string, workerId: string) {
+  return useQuery<{ flags: WorkerFlagEvent[] }>({
+    queryKey: ["human-tasks", taskId, "workers", workerId, "flags"],
+    queryFn: () => fetchJson(`/api/human-tasks/${taskId}/workers/${workerId}/flags`),
+    enabled: !!taskId && !!workerId,
+  });
+}
+
+export function useResolveWorkerFlag() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { success: boolean; flag: WorkerFlagEvent },
+    Error,
+    { taskId: string; flagId: string; reason?: string; note?: string }
+  >({
+    mutationFn: ({ taskId, flagId, reason, note }) =>
+      fetchJson(`/api/human-tasks/${taskId}/flags/${flagId}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ reason, note }),
+      }),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "workers"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "workers", "flagged"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "flags"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "reports"] });
+      toast.success("Flag resolved");
+    },
+    onError: (e) => toast.error(e.message || "Could not resolve flag"),
+  });
+}
+
+export function useDismissWorkerFlag() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { success: boolean; flag: WorkerFlagEvent },
+    Error,
+    { taskId: string; flagId: string; reason?: string; note?: string }
+  >({
+    mutationFn: ({ taskId, flagId, reason, note }) =>
+      fetchJson(`/api/human-tasks/${taskId}/flags/${flagId}/dismiss`, {
+        method: "POST",
+        body: JSON.stringify({ reason, note }),
+      }),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "workers"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "workers", "flagged"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "flags"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "reports"] });
+      toast.success("Flag dismissed");
+    },
+    onError: (e) => toast.error(e.message || "Could not dismiss flag"),
   });
 }
 

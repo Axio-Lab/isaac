@@ -11,6 +11,7 @@ import { TaskSubmissionService } from "./task-submission.service";
 import { TaskVettingService } from "./task-vetting.service";
 import { TaskReportService } from "./task-report.service";
 import { TaskCronService } from "./task-cron.service";
+import { TaskFlagService } from "./task-flag.service";
 
 @Module({
   imports: [AgentModule, ChannelsModule, ReportsModule, forwardRef(() => AutomatedTasksModule)],
@@ -20,6 +21,7 @@ import { TaskCronService } from "./task-cron.service";
     TasksService,
     TaskWorkerService,
     TaskSubmissionService,
+    TaskFlagService,
     TaskVettingService,
     TaskReportService,
     TaskCronService,
@@ -28,6 +30,7 @@ import { TaskCronService } from "./task-cron.service";
     TasksService,
     TaskWorkerService,
     TaskSubmissionService,
+    TaskFlagService,
     TaskVettingService,
     TaskReportService,
     TaskCronService,

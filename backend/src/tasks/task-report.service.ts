@@ -4,6 +4,7 @@ import { getZonedDayBoundsUtc, isValidIanaTimeZone } from "@/common/lib/taskTime
 import { ReportDeliveryService } from "@/reports/report-delivery.service";
 import { TaskSubmissionService } from "./task-submission.service";
 import { getTaskInstructions } from "@/agent/isaac-system-prompt";
+import { TaskFlagService } from "./task-flag.service";
 
 /** Counts as pass for compliance rate (aligned with liveboard). */
 const PASS_STATUSES = new Set(["APPROVED", "VETTED"]);
@@ -29,7 +30,8 @@ export class TaskReportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly submissionService: TaskSubmissionService,
-    private readonly reportDelivery: ReportDeliveryService
+    private readonly reportDelivery: ReportDeliveryService,
+    private readonly flagService: TaskFlagService
   ) {}
 
   setGenerateText(
@@ -107,17 +109,32 @@ export class TaskReportService {
       if ((sub as any).aiScore != null) workerMap[w.id].scores.push((sub as any).aiScore);
     }
 
-    const flaggedWorkerIds: string[] = [];
+    const hasActiveWorkers = task.workers.length > 0;
+    const noWorkersMessage = "No active workers are assigned to this task yet";
     const workerBreakdown = Object.entries(workerMap).map(([id, w]) => {
       const wAvg =
         w.scores.length > 0
           ? Math.round(w.scores.reduce((a, b) => a + b, 0) / w.scores.length)
           : null;
-      if (w.missed >= 2 || (wAvg !== null && wAvg < (task.passingScore || 70))) {
-        flaggedWorkerIds.push(id);
-      }
       return `${w.name}: ${w.submitted}/${w.due} submitted${w.missed > 0 ? ` (${w.missed} missed)` : ""}, avg ${wAvg ?? "N/A"}`;
     });
+
+    const flaggedWorkersSnapshot = await this.flagService.buildReportFlagSnapshot(
+      taskId,
+      userId,
+      periodStart,
+      periodEnd
+    );
+    const flaggedWorkerIds = [...new Set(flaggedWorkersSnapshot.map((flag) => flag.workerId))];
+    const flaggedWorkersText =
+      flaggedWorkersSnapshot.length > 0
+        ? flaggedWorkersSnapshot
+            .map(
+              (flag) =>
+                `${flag.workerName} | ${flag.reasonLabel} | ${new Date(flag.triggeredAt).toISOString()} | severity ${flag.severity}${flag.details ? ` | ${flag.details}` : ""}`
+            )
+            .join("\n")
+        : "None";
 
     let summaryMarkdown: string;
 
@@ -126,8 +143,8 @@ export class TaskReportService {
         `Task: ${task.name}\nDate: ${periodStart.toISOString().split("T")[0]}\n` +
         `Total Due: ${totalDue}\nSubmitted: ${submitted}\nMissed: ${missed}\n` +
         `Avg Score: ${avgScore ?? "N/A"}\nPass Rate: ${passRate ?? "N/A"}%\n\n` +
-        `Worker Breakdown:\n${workerBreakdown.join("\n")}\n\n` +
-        `Flagged Workers: ${flaggedWorkerIds.length > 0 ? flaggedWorkerIds.join(", ") : "None"}`;
+        `Worker Breakdown:\n${hasActiveWorkers ? workerBreakdown.join("\n") || "No submissions yet" : noWorkersMessage}\n\n` +
+        `Flagged Workers:\n${flaggedWorkersText}`;
 
       const { text } = await this.generateText({
         systemPrompt: getTaskInstructions("report"),
@@ -140,8 +157,17 @@ export class TaskReportService {
         `**Date:** ${periodStart.toISOString().split("T")[0]}\n` +
         `**Total Due:** ${totalDue} | **Submitted:** ${submitted} | **Missed:** ${missed}\n` +
         `**Avg Score:** ${avgScore ?? "N/A"} | **Pass Rate:** ${passRate ?? "N/A"}%\n\n` +
-        `## Worker Breakdown\n${workerBreakdown.map((l) => `- ${l}`).join("\n")}\n\n` +
-        `## Flagged Workers\n${flaggedWorkerIds.length > 0 ? flaggedWorkerIds.join(", ") : "None"}`;
+        `## Worker Breakdown\n${hasActiveWorkers ? workerBreakdown.map((l) => `- ${l}`).join("\n") || "- No submissions yet" : `- ${noWorkersMessage}`}\n\n` +
+        `## Flagged Workers\n${
+          flaggedWorkersSnapshot.length > 0
+            ? flaggedWorkersSnapshot
+                .map(
+                  (flag) =>
+                    `- ${flag.workerName}: ${flag.reasonLabel} (${flag.severity}) on ${new Date(flag.triggeredAt).toLocaleString()}${flag.details ? ` — ${flag.details}` : ""}`
+                )
+                .join("\n")
+            : "None"
+        }`;
     }
 
     const report = await (this.prisma as any).taskComplianceReport.create({
@@ -155,8 +181,14 @@ export class TaskReportService {
         avgScore,
         passRate,
         flaggedWorkerIds,
+        flaggedWorkersSnapshot,
       },
     });
+
+    await this.flagService.attachFlagsToReport(
+      report.id,
+      flaggedWorkersSnapshot.map((flag) => flag.id)
+    );
 
     if (submissions.length > 0) {
       await (this.prisma as any).taskSubmission.updateMany({
