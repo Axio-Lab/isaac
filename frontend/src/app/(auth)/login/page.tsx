@@ -137,7 +137,7 @@ function LoginForm() {
               type="email"
               placeholder="user@example.com"
               {...register("email")}
-              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-base sm:text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.email && (
               <p className="text-[10px] text-destructive mt-1">{errors.email.message}</p>
@@ -150,7 +150,7 @@ function LoginForm() {
               type="password"
               placeholder="********"
               {...register("password")}
-              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-base sm:text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.password && (
               <p className="text-[10px] text-destructive mt-1">{errors.password.message}</p>

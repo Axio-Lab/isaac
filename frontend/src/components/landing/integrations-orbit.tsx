@@ -21,6 +21,13 @@ const apps = [
 
 const TOTAL = apps.length;
 
+function getOrbitRatio(size: number) {
+  if (size < 380) return 0.44;
+  if (size < 480) return 0.42;
+  if (size < 640) return 0.39;
+  return 0.345;
+}
+
 function OrbitCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -60,7 +67,7 @@ function OrbitCanvas() {
 
       const cx = w / 2;
       const cy = h / 2;
-      const orbitR = Math.min(w, h) * 0.345;
+      const orbitR = Math.min(w, h) * getOrbitRatio(Math.min(w, h));
       const t = performance.now() * 0.001;
       const dark = isDark();
 
@@ -179,10 +186,19 @@ function OrbitCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
 }
 
-function AppTile({ app, index }: { app: (typeof apps)[0]; index: number }) {
+function AppTile({
+  app,
+  index,
+  containerWidth,
+}: {
+  app: (typeof apps)[0];
+  index: number;
+  containerWidth: number;
+}) {
   const angleRad = (Math.PI * 2 * index) / TOTAL - Math.PI / 2;
-  const left = 50 + Math.cos(angleRad) * 34.5;
-  const top = 50 + Math.sin(angleRad) * 34.5;
+  const orbitOffset = getOrbitRatio(containerWidth) * 100;
+  const left = 50 + Math.cos(angleRad) * orbitOffset;
+  const top = 50 + Math.sin(angleRad) * orbitOffset;
 
   return (
     <div
@@ -230,7 +246,20 @@ function useInViewOnce(threshold = 0.1) {
 }
 
 export function IntegrationsOrbit() {
+  const orbitBoxRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(500);
   const { ref: sectionRef, visible } = useInViewOnce();
+
+  useEffect(() => {
+    const update = () => {
+      if (orbitBoxRef.current) {
+        setContainerWidth(orbitBoxRef.current.offsetWidth);
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   return (
     <section id="integrations" className="relative py-14 overflow-hidden">
@@ -276,7 +305,7 @@ export function IntegrationsOrbit() {
               visible ? "opacity-100 scale-100" : "opacity-0 scale-90"
             )}
           >
-            <div className="relative w-full max-w-[600px] aspect-square">
+            <div ref={orbitBoxRef} className="relative w-full max-w-[600px] aspect-square">
               <OrbitCanvas />
 
               {/* Center hub — circle, pinned to exact center */}
@@ -299,7 +328,7 @@ export function IntegrationsOrbit() {
 
               {/* App tiles on the orbit */}
               {apps.map((app, i) => (
-                <AppTile key={app.name} app={app} index={i} />
+                <AppTile key={app.name} app={app} index={i} containerWidth={containerWidth} />
               ))}
             </div>
           </div>

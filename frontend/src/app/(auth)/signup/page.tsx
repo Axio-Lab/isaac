@@ -122,7 +122,7 @@ export default function SignupPage() {
               type="text"
               placeholder="Your name"
               {...register("name")}
-              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-base sm:text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.name && (
               <p className="text-[10px] text-destructive mt-1">{errors.name.message}</p>
@@ -134,7 +134,7 @@ export default function SignupPage() {
               type="email"
               placeholder="user@example.com"
               {...register("email")}
-              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-base sm:text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.email && (
               <p className="text-[10px] text-destructive mt-1">{errors.email.message}</p>
@@ -146,7 +146,7 @@ export default function SignupPage() {
               type="password"
               placeholder="********"
               {...register("password")}
-              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-base sm:text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.password && (
               <p className="text-[10px] text-destructive mt-1">{errors.password.message}</p>
@@ -160,7 +160,7 @@ export default function SignupPage() {
               type="password"
               placeholder="********"
               {...register("confirmPassword")}
-              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="mt-1 w-full h-9 px-3 border border-border rounded-lg text-base sm:text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {errors.confirmPassword && (
               <p className="text-[10px] text-destructive mt-1">{errors.confirmPassword.message}</p>
