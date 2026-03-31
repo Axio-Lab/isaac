@@ -9,21 +9,21 @@
   --color-success: #22c55e;
   --color-warning: #f59e0b;
 
-  --color-background: #f8fafc;
+  --color-background: #f5f5f4;
   --color-foreground: #0f172a;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #475569;
-  --color-border: #e2e8f0;
-  --color-input: #cbd5e1;
-  --color-secondary: #f8fafc;
+  --color-muted: #eeeded;
+  --color-muted-foreground: #52525b;
+  --color-border: #e0dfdd;
+  --color-input: #d4d3d0;
+  --color-secondary: #f0efee;
   --color-secondary-foreground: #0f172a;
-  --color-accent: #eef2ff;
+  --color-accent: #eae9e7;
   --color-accent-foreground: #1e1b4b;
-  --color-card: #ffffff;
+  --color-card: #fafaf9;
   --color-card-foreground: #0f172a;
-  --color-popover: #ffffff;
+  --color-popover: #fafaf9;
   --color-popover-foreground: #0f172a;
-  --color-surface: #f8fafc;
+  --color-surface: #f5f5f4;
 }
 
 .dark {
@@ -240,4 +240,76 @@
 .dark .glass-button-wrap.glass-filled .glass-button:hover {
   background: color-mix(in srgb, var(--color-primary) 22%, transparent);
   border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+/* ─── Landing Page Animations ─── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ping-slow {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+@keyframes float-tile {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-6px);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out both;
+}
+
+.animate-ping-slow {
+  animation: ping-slow 3s ease-out infinite;
+}
+
+/* Isaac orb animations */
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.6;
+  }
+}
+
+@keyframes orb-scan {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
 }
