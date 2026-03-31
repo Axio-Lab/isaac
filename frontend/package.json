@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node ./scripts/run-next-with-log-redaction.mjs dev",
     "prisma:generate": "prisma generate --no-engine --schema prisma/schema.prisma",
     "build": "npm run prisma:generate && next build",
-    "start": "next start",
+    "start": "node ./scripts/run-next-with-log-redaction.mjs start",
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.{ts,tsx}\""
