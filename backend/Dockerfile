@@ -29,8 +29,8 @@ COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appgroup /app/package.json ./package.json
 COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
 
-RUN mkdir -p public/task-submissions && \
-    chown -R appuser:appgroup public
+RUN mkdir -p public/task-submissions uploads && \
+    chown -R appuser:appgroup public uploads
 
 ENV HOME=/home/appuser
 

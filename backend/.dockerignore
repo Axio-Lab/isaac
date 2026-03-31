@@ -1,0 +1,21 @@
+# Dependencies & build output (rebuilt in image)
+node_modules
+dist
+coverage
+*.tsbuildinfo
+
+# Secrets — never copy into build context
+.env
+.env.*
+!.env.example
+
+# Git & IDE
+.git
+.gitignore
+.cursor
+*.md
+
+# Tests & misc
+test
+**/*.spec.ts
+**/*.test.ts
