@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 
 export function CTA() {
   const ref = useRef<HTMLDivElement>(null);
@@ -27,65 +27,63 @@ export function CTA() {
   return (
     <section className="relative py-14 overflow-hidden">
       <div className="absolute inset-0 bg-background" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/6 to-transparent" />
 
-      {/* Background radial gradients */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.1)_0%,transparent_60%)] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(139,92,246,0.06)_0%,transparent_70%)] pointer-events-none" />
-      <div className="absolute top-1/2 right-1/4 translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(6,182,212,0.06)_0%,transparent_70%)] pointer-events-none" />
+      <div
+        ref={ref}
+        className={`landing-edge-shadow relative mx-auto flex w-full max-w-4xl sm:max-w-5xl flex-col justify-center items-center gap-y-6 border-y border-border px-5 sm:px-10 lg:px-20 py-12 sm:py-16 transition-all duration-1000 ease-out ${
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+        style={{
+          backgroundImage:
+            "radial-gradient(60% 100% at 22% 0%, color-mix(in srgb, var(--color-foreground) 10%, transparent) 0%, transparent 100%)",
+        }}
+      >
+        <Plus
+          className="absolute top-[-12px] left-[-12px] z-10 h-6 w-6 text-muted-foreground/30"
+          strokeWidth={1}
+        />
+        <Plus
+          className="absolute top-[-12px] right-[-12px] z-10 h-6 w-6 text-muted-foreground/30"
+          strokeWidth={1}
+        />
+        <Plus
+          className="absolute bottom-[-12px] left-[-12px] z-10 h-6 w-6 text-muted-foreground/30"
+          strokeWidth={1}
+        />
+        <Plus
+          className="absolute bottom-[-12px] right-[-12px] z-10 h-6 w-6 text-muted-foreground/30"
+          strokeWidth={1}
+        />
 
-      <div ref={ref} className="relative max-w-4xl mx-auto px-6 lg:px-8 text-center">
-        <div
-          className={`transition-all duration-1000 ease-out ${
-            visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-12 scale-95"
-          }`}
-        >
-          <div className="relative inline-block mb-8">
-            <div className="h-16 w-16 rounded-2xl bg-linear-to-br from-primary to-blue-600 flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.3)] mx-auto">
-              <img
-                src="/images/isaac-mark.svg"
-                alt="Isaac"
-                className="h-7 w-7"
-                width={28}
-                height={28}
-              />
-            </div>
-            <div className="absolute inset-0 h-16 w-16 rounded-2xl animate-ping-slow border-2 border-primary/20 mx-auto" />
-          </div>
+        <div className="-inset-y-6 pointer-events-none absolute left-0 w-px border-l border-border" />
+        <div className="-inset-y-6 pointer-events-none absolute right-0 w-px border-r border-border" />
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight">
-            Ready to put your
-            <br />
-            <span className="bg-linear-to-r from-primary via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              operations on autopilot?
-            </span>
+        <div className="-z-10 absolute top-0 left-1/2 h-full border-l border-dashed border-border" />
+
+        <div className="space-y-2.5 max-w-2xl">
+          <h2 className="text-center text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight leading-tight">
+            Ready to put your <span className="text-primary">operations on autopilot?</span>
           </h2>
-
-          <p className="mt-6 text-lg text-foreground/40 max-w-xl mx-auto leading-relaxed">
-            Join teams who trust Isaac to monitor, evaluate, and manage their workforce. Set up in
-            minutes, see results immediately.
+          <p className="text-center text-base text-muted-foreground max-w-lg mx-auto">
+            Isaac bridges the gap between high-level operations and the granular reality of
+            micro-managing tasks.
           </p>
+        </div>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/signup"
-              className="group relative inline-flex items-center gap-2 px-8 py-4 text-[15px] font-semibold text-white rounded-2xl bg-primary hover:bg-primary/90 transition-all duration-300 shadow-[0_0_40px_rgba(59,130,246,0.35)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:-translate-y-0.5"
-            >
-              Get Started Free
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-              <div className="absolute inset-0 rounded-2xl bg-linear-to-b from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </Link>
-            <Link
-              href="mailto:sales@verxio.xyz"
-              className="px-8 py-4 text-[15px] font-medium text-foreground/60 hover:text-foreground rounded-2xl border border-white/8 hover:border-white/15 hover:bg-white/3 transition-all duration-300"
-            >
-              Talk to Sales
-            </Link>
-          </div>
-
-          <p className="mt-8 text-[12px] text-foreground/25">
-            No credit card required · 14-day free trial · Cancel anytime
-          </p>
+        <div className="flex items-center justify-center gap-3">
+          <Link
+            href="mailto:sales@verxio.xyz"
+            className="px-6 py-3 text-[13px] font-medium text-foreground rounded-lg border border-border hover:bg-muted/50 transition-all duration-300"
+          >
+            Contact Sales
+          </Link>
+          <Link
+            href="/signup"
+            className="group inline-flex items-center gap-1.5 px-6 py-3 text-[13px] font-semibold text-white rounded-lg bg-primary hover:bg-primary/90 transition-all duration-300 shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:shadow-[0_0_30px_rgba(59,130,246,0.35)]"
+          >
+            Get Started
+            <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
         </div>
       </div>
     </section>

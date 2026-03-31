@@ -1,21 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const apps = [
-  { name: "Gmail", color: "#EA4335", icon: "M" },
-  { name: "Slack", color: "#4A154B", icon: "S" },
-  { name: "Discord", color: "#5865F2", icon: "D" },
-  { name: "GitHub", color: "#ffffff", icon: "G" },
-  { name: "Notion", color: "#ffffff", icon: "N" },
-  { name: "Sheets", color: "#34A853", icon: "S" },
-  { name: "Stripe", color: "#635BFF", icon: "S" },
-  { name: "Jira", color: "#0052CC", icon: "J" },
-  { name: "HubSpot", color: "#FF7A59", icon: "H" },
-  { name: "Linear", color: "#5E6AD2", icon: "L" },
-  { name: "Airtable", color: "#18BFFF", icon: "A" },
-  { name: "Telegram", color: "#26A5E4", icon: "T" },
+  { name: "Gmail", logo: "/logo/gmail.svg" },
+  { name: "Slack", logo: "/logo/slack.svg" },
+  { name: "Discord", logo: "/logo/discord.svg" },
+  { name: "GitHub", logo: "/logo/github.svg", darkInvert: true },
+  { name: "Notion", logo: "/logo/notion.svg", darkInvert: true },
+  { name: "Sheets", logo: "/logo/googlesheets.svg" },
+  { name: "Docs", logo: "/logo/googledocs.svg" },
+  { name: "Stripe", logo: "/logo/stripe.svg" },
+  { name: "Jira", logo: "/logo/jira.svg" },
+  { name: "HubSpot", logo: "/logo/hubspot.svg" },
+  { name: "Calendar", logo: "/logo/googlecalendar.svg" },
+  { name: "Airtable", logo: "/logo/airtable.svg" },
+  { name: "Telegram", logo: "/logo/telegram.svg" },
 ];
+
+const TOTAL = apps.length;
 
 function OrbitCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,28 +37,20 @@ function OrbitCanvas() {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
 
-    const dataDots: Array<{
-      angle: number;
-      speed: number;
-      radius: number;
+    const isDark = () => document.documentElement.classList.contains("dark");
+
+    const dataPulses: Array<{
+      appIdx: number;
       progress: number;
-      appIndex: number;
+      speed: number;
     }> = [];
 
-    for (let i = 0; i < 8; i++) {
-      dataDots.push({
-        angle: (Math.PI * 2 * i) / 8,
-        speed: 0.003 + Math.random() * 0.004,
-        radius: 2 + Math.random() * 1.5,
-        progress: Math.random(),
-        appIndex: Math.floor(Math.random() * apps.length),
-      });
-    }
+    let lastPulse = 0;
 
     const draw = () => {
       const rect = canvas.getBoundingClientRect();
@@ -64,95 +60,109 @@ function OrbitCanvas() {
 
       const cx = w / 2;
       const cy = h / 2;
-      const orbitRadius = Math.min(w, h) * 0.38;
-      const t = Date.now() * 0.001;
+      const orbitR = Math.min(w, h) * 0.345;
+      const t = performance.now() * 0.001;
+      const dark = isDark();
 
-      // Outer orbit rings
-      for (let r = 0; r < 2; r++) {
-        const ringR = orbitRadius * (0.85 + r * 0.15);
+      const ringAlpha = dark ? 0.06 : 0.08;
+      const spokeBase = dark ? 0.05 : 0.07;
+      const spokeHighlight = dark ? 0.35 : 0.25;
+      const pulseRgb = dark ? "96,165,250" : "37,99,235";
+      const spokeRgb = "59,130,246";
+
+      // Orbit rings
+      for (let r = 0; r < 3; r++) {
+        const ringRadius = orbitR * (0.75 + r * 0.13);
         ctx.beginPath();
-        ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(59, 130, 246, ${0.06 - r * 0.02})`;
-        ctx.lineWidth = 1;
+        ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${spokeRgb},${ringAlpha - r * 0.015})`;
+        ctx.lineWidth = 0.8;
         ctx.stroke();
       }
 
-      // Center ping
-      const pingScale = 1 + 0.15 * Math.sin(t * 1.5);
-      const pingAlpha = 0.08 + 0.04 * Math.sin(t * 1.5);
+      // Center breathing glow — matches the hub size
+      const hubR = Math.min(w, h) * 0.062;
+      const breathe = 0.06 + 0.03 * Math.sin(t * 1.5);
       ctx.beginPath();
-      ctx.arc(cx, cy, 40 * pingScale, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(59, 130, 246, ${pingAlpha})`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      ctx.arc(cx, cy, hubR + 8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${spokeRgb},${breathe})`;
+      ctx.fill();
 
-      ctx.beginPath();
-      ctx.arc(cx, cy, 55 * pingScale, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(59, 130, 246, ${pingAlpha * 0.5})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      // Highlight cycles through apps
+      const highlightIdx = Math.floor(t * 0.4) % TOTAL;
 
-      // Dashed spokes to each app
-      const highlightIdx = Math.floor(t * 0.5) % apps.length;
-
-      for (let i = 0; i < apps.length; i++) {
-        const angle = (Math.PI * 2 * i) / apps.length - Math.PI / 2;
-        const ax = cx + Math.cos(angle) * orbitRadius;
-        const ay = cy + Math.sin(angle) * orbitRadius;
-        const isHighlighted = i === highlightIdx;
+      // Draw spokes from center to each app tile position
+      for (let i = 0; i < TOTAL; i++) {
+        const angle = (Math.PI * 2 * i) / TOTAL - Math.PI / 2;
+        const ax = cx + Math.cos(angle) * orbitR;
+        const ay = cy + Math.sin(angle) * orbitR;
+        const highlighted = i === highlightIdx;
 
         ctx.save();
         ctx.beginPath();
-        ctx.setLineDash([4, 6]);
-        ctx.lineDashOffset = -t * 20;
+        ctx.setLineDash([3, 5]);
+        ctx.lineDashOffset = -t * 18;
         ctx.moveTo(cx, cy);
         ctx.lineTo(ax, ay);
 
-        if (isHighlighted) {
+        if (highlighted) {
           const grad = ctx.createLinearGradient(cx, cy, ax, ay);
-          grad.addColorStop(0, "rgba(0, 163, 240, 0.6)");
-          grad.addColorStop(1, "rgba(59, 130, 246, 0.15)");
+          grad.addColorStop(0, `rgba(${spokeRgb},${spokeHighlight})`);
+          grad.addColorStop(1, `rgba(${spokeRgb},0.08)`);
           ctx.strokeStyle = grad;
           ctx.lineWidth = 1.5;
         } else {
-          ctx.strokeStyle = "rgba(59, 130, 246, 0.08)";
-          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = `rgba(${spokeRgb},${spokeBase})`;
+          ctx.lineWidth = 0.7;
         }
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
 
-        if (isHighlighted) {
+        // Glow behind highlighted app
+        if (highlighted) {
           ctx.beginPath();
-          ctx.arc(ax, ay, 28, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(59, 130, 246, 0.06)";
+          ctx.arc(ax, ay, 26, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${spokeRgb},0.05)`;
           ctx.fill();
         }
       }
 
-      // Data dots
-      for (const dot of dataDots) {
-        dot.progress += dot.speed;
-        if (dot.progress > 1) {
-          dot.progress = 0;
-          dot.appIndex = Math.floor(Math.random() * apps.length);
+      // Fire data pulses
+      if (t - lastPulse > 0.3) {
+        dataPulses.push({
+          appIdx: Math.floor(Math.random() * TOTAL),
+          progress: 0,
+          speed: 0.006 + Math.random() * 0.008,
+        });
+        lastPulse = t;
+        if (dataPulses.length > 16) dataPulses.shift();
+      }
+
+      for (let i = dataPulses.length - 1; i >= 0; i--) {
+        const p = dataPulses[i];
+        p.progress += p.speed;
+        if (p.progress > 1) {
+          dataPulses.splice(i, 1);
+          continue;
         }
 
-        const angle = (Math.PI * 2 * dot.appIndex) / apps.length - Math.PI / 2;
-        const p = dot.progress;
-        const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-        const dx = cx + Math.cos(angle) * orbitRadius * eased;
-        const dy = cy + Math.sin(angle) * orbitRadius * eased;
-        const alpha = p < 0.1 ? p / 0.1 : p > 0.9 ? (1 - p) / 0.1 : 1;
+        const angle = (Math.PI * 2 * p.appIdx) / TOTAL - Math.PI / 2;
+        const ease =
+          p.progress < 0.5 ? 2 * p.progress * p.progress : 1 - Math.pow(-2 * p.progress + 2, 2) / 2;
+        const px = cx + Math.cos(angle) * orbitR * ease;
+        const py = cy + Math.sin(angle) * orbitR * ease;
+        const fade =
+          p.progress < 0.1 ? p.progress / 0.1 : p.progress > 0.85 ? (1 - p.progress) / 0.15 : 1;
 
         ctx.beginPath();
-        ctx.arc(dx, dy, dot.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 163, 240, ${0.8 * alpha})`;
+        ctx.arc(px, py, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pulseRgb},${0.7 * fade})`;
         ctx.fill();
 
         ctx.beginPath();
-        ctx.arc(dx, dy, dot.radius + 3, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 163, 240, ${0.15 * alpha})`;
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${pulseRgb},${0.12 * fade})`;
         ctx.fill();
       }
 
@@ -169,39 +179,28 @@ function OrbitCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
 }
 
-function AppTile({
-  app,
-  index,
-  total,
-  containerSize,
-}: {
-  app: (typeof apps)[0];
-  index: number;
-  total: number;
-  containerSize: number;
-}) {
-  const angle = (360 / total) * index - 90;
-  const rad = (angle * Math.PI) / 180;
-  const radius = containerSize * 0.38;
-  const x = 50 + (Math.cos(rad) * radius * 100) / containerSize;
-  const y = 50 + (Math.sin(rad) * radius * 100) / containerSize;
-
-  const floatDelay = index * 0.3;
+function AppTile({ app, index }: { app: (typeof apps)[0]; index: number }) {
+  const angleRad = (Math.PI * 2 * index) / TOTAL - Math.PI / 2;
+  const left = 50 + Math.cos(angleRad) * 34.5;
+  const top = 50 + Math.sin(angleRad) * 34.5;
 
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
-      style={{
-        left: `${x}%`,
-        top: `${y}%`,
-        animation: `float-tile 4s ease-in-out ${floatDelay}s infinite`,
-      }}
+      style={{ left: `${left}%`, top: `${top}%` }}
     >
       <div className="flex flex-col items-center gap-1.5 group cursor-default">
-        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-white/8 bg-white/4 backdrop-blur-sm flex items-center justify-center text-sm font-bold transition-all duration-300 group-hover:border-white/20 group-hover:bg-white/8 group-hover:scale-110 shadow-[0_2px_20px_rgba(0,0,0,0.3)]">
-          <span style={{ color: app.color }}>{app.icon}</span>
+        <div className="landing-edge-shadow-soft h-9 w-9 sm:h-11 sm:w-11 rounded-xl border border-border bg-card/95 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_4px_20px_rgba(59,130,246,0.15)] overflow-hidden">
+          <img
+            src={app.logo}
+            alt={app.name}
+            className={cn(
+              "h-4.5 w-4.5 sm:h-5.5 sm:w-5.5 object-contain",
+              app.darkInvert && "dark:invert"
+            )}
+          />
         </div>
-        <span className="text-[9px] text-foreground/30 font-medium tracking-wider uppercase group-hover:text-foreground/60 transition-colors">
+        <span className="text-[8px] sm:text-[9px] text-muted-foreground/50 font-medium tracking-wider uppercase group-hover:text-muted-foreground transition-colors">
           {app.name}
         </span>
       </div>
@@ -209,115 +208,9 @@ function AppTile({
   );
 }
 
-export function IntegrationsOrbit() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState(500);
-  const { ref: sectionRef, visible } = useInViewOnce();
-
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const s = Math.min(containerRef.current.offsetWidth, 600);
-        setContainerSize(s);
-      }
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
-
-  return (
-    <section id="integrations" className="relative py-14 overflow-hidden">
-      <div className="absolute inset-0 bg-background" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/6 to-transparent" />
-
-      <div ref={sectionRef} className="relative max-w-7xl mx-auto px-6 lg:px-8">
-        <div
-          className={`text-center mb-16 transition-all duration-700 ${
-            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-          }`}
-        >
-          <span className="inline-flex px-3 py-1 rounded-full text-[11px] font-medium tracking-wider uppercase text-cyan-400/80 border border-cyan-400/20 bg-cyan-400/5">
-            Integrations
-          </span>
-          <h2 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
-            Connected to{" "}
-            <span className="bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              1,000+ apps
-            </span>
-          </h2>
-          <p className="mt-4 text-base text-foreground/40 max-w-lg mx-auto">
-            Powered by Composio, Isaac integrates with your entire stack and can execute over
-            10,000+ automated actions across platforms.
-          </p>
-        </div>
-
-        <div className="flex justify-center">
-          <div
-            ref={containerRef}
-            className={`relative w-full max-w-[600px] aspect-square transition-all duration-1000 ${
-              visible ? "opacity-100 scale-100" : "opacity-0 scale-90"
-            }`}
-          >
-            <OrbitCanvas />
-
-            {/* Center hub */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-              <div className="relative h-20 w-20 rounded-2xl bg-linear-to-br from-[#00A3F0] to-[#0066CC] flex items-center justify-center shadow-[0_0_40px_rgba(0,163,240,0.3)]">
-                <img
-                  src="/images/isaac-mark.svg"
-                  alt="Isaac"
-                  className="h-8 w-8"
-                  width={32}
-                  height={32}
-                />
-                <div className="absolute inset-0 rounded-2xl animate-ping-slow border-2 border-[#00A3F0]/30" />
-                <div
-                  className="absolute inset-0 rounded-2xl border-2 border-[#00A3F0]/15"
-                  style={{ animation: "ping-slow 3s ease-out infinite 0.5s" }}
-                />
-              </div>
-            </div>
-
-            {apps.map((app, i) => (
-              <AppTile
-                key={app.name}
-                app={app}
-                index={i}
-                total={apps.length}
-                containerSize={containerSize}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div
-          className={`mt-12 flex flex-wrap justify-center gap-6 text-[13px] text-foreground/30 transition-all duration-700 delay-300 ${
-            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-cyan-400/60" />
-            <span>1,000+ App Integrations</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-cyan-400/60" />
-            <span>10,000+ Automated Actions</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-cyan-400/60" />
-            <span>Powered by Composio</span>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function useInViewOnce(threshold = 0.15) {
+function useInViewOnce(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -333,6 +226,85 @@ function useInViewOnce(threshold = 0.15) {
     obs.observe(el);
     return () => obs.disconnect();
   }, [threshold]);
-
   return { ref, visible };
+}
+
+export function IntegrationsOrbit() {
+  const { ref: sectionRef, visible } = useInViewOnce();
+
+  return (
+    <section id="integrations" className="relative py-14 overflow-hidden">
+      <div className="absolute inset-0 bg-background" />
+
+      {/* Ambient glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.06)_0%,transparent_65%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.08)_0%,transparent_65%)] pointer-events-none" />
+
+      <div ref={sectionRef} className="relative max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-14 items-center">
+          {/* Left: text */}
+          <div
+            className={cn(
+              "transition-all duration-700",
+              visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            )}
+          >
+            <h2 className="text-4xl sm:text-5xl lg:text-5xl font-bold text-foreground tracking-tight leading-tight">
+              <span className="text-primary">Isaac</span> plugs directly into your existing
+              architecture.
+            </h2>
+            <p className="mt-4 text-base text-muted-foreground max-w-md">
+              With over 1,000+ apps and 10,000+ custom actions. Isaac reads, writes, and acts across
+              your tools without you switching tabs.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 text-[13px] text-muted-foreground">
+              <div className="flex items-center gap-2.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <span>Gmail, Slack, Discord, Notion, Jira, and more</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <span>Read, write, trigger, schedule across every app</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: orbit */}
+          <div
+            className={cn(
+              "flex justify-center transition-all duration-1000",
+              visible ? "opacity-100 scale-100" : "opacity-0 scale-90"
+            )}
+          >
+            <div className="relative w-full max-w-[600px] aspect-square">
+              <OrbitCanvas />
+
+              {/* Center hub — circle, pinned to exact center */}
+              <div
+                className="absolute z-20 h-16 w-16 sm:h-18 sm:w-18"
+                style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+              >
+                <div className="relative h-full w-full rounded-full bg-linear-to-br from-primary to-blue-600 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3),0_0_60px_rgba(59,130,246,0.1)]">
+                  <img
+                    src="/images/isaac-mark.svg"
+                    alt="Isaac"
+                    className="h-7 w-7 sm:h-8 sm:w-8"
+                    width={32}
+                    height={32}
+                  />
+                </div>
+                <div className="absolute inset-[-6px] rounded-full border border-primary/20 animate-ping-slow" />
+                <div className="absolute inset-[-14px] rounded-full border border-primary/10 animate-[ping-slow_3s_ease-out_infinite_0.5s]" />
+              </div>
+
+              {/* App tiles on the orbit */}
+              {apps.map((app, i) => (
+                <AppTile key={app.name} app={app} index={i} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

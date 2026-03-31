@@ -29,8 +29,12 @@ function NeuralCanvas() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const nodes: Array<{
-      x: number; y: number; vx: number; vy: number;
-      baseRadius: number; phase: number;
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      baseRadius: number;
+      phase: number;
     }> = [];
 
     const resize = () => {
@@ -57,7 +61,10 @@ function NeuralCanvas() {
     }
 
     const pulses: Array<{
-      fromIdx: number; toIdx: number; progress: number; speed: number;
+      fromIdx: number;
+      toIdx: number;
+      progress: number;
+      speed: number;
     }> = [];
     let lastPulse = 0;
 
@@ -118,12 +125,16 @@ function NeuralCanvas() {
       for (let i = pulses.length - 1; i >= 0; i--) {
         const p = pulses[i];
         p.progress += p.speed;
-        if (p.progress > 1) { pulses.splice(i, 1); continue; }
+        if (p.progress > 1) {
+          pulses.splice(i, 1);
+          continue;
+        }
         const from = nodes[p.fromIdx];
         const to = nodes[p.toIdx];
         const px = from.x + (to.x - from.x) * p.progress;
         const py = from.y + (to.y - from.y) * p.progress;
-        const fade = p.progress < 0.1 ? p.progress / 0.1 : p.progress > 0.85 ? (1 - p.progress) / 0.15 : 1;
+        const fade =
+          p.progress < 0.1 ? p.progress / 0.1 : p.progress > 0.85 ? (1 - p.progress) / 0.15 : 1;
         ctx.beginPath();
         ctx.arc(px, py, 1.5, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${pulseColor},${0.5 * fade})`;
@@ -133,16 +144,24 @@ function NeuralCanvas() {
       animId = requestAnimationFrame(draw);
     };
     draw();
-    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 }
 
 function TerminalCard() {
-  const [visibleActions, setVisibleActions] = useState<Array<{
-    id: number; action: (typeof ISAAC_ACTIONS)[0]; entering: boolean; ts: string;
-  }>>([]);
+  const [visibleActions, setVisibleActions] = useState<
+    Array<{
+      id: number;
+      action: (typeof ISAAC_ACTIONS)[0];
+      entering: boolean;
+      ts: string;
+    }>
+  >([]);
   const counterRef = useRef(0);
 
   useEffect(() => {
@@ -166,7 +185,7 @@ function TerminalCard() {
   }, []);
 
   return (
-    <div className="w-full rounded-2xl border border-border bg-card/80 dark:bg-card/60 backdrop-blur-xl shadow-2xl dark:shadow-[0_8px_60px_rgba(0,0,0,0.5)] overflow-hidden">
+    <div className="landing-edge-shadow w-full rounded-2xl border border-border bg-card/80 dark:bg-card/60 backdrop-blur-xl overflow-hidden">
       {/* Title bar */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <div className="flex gap-1.5">
@@ -182,7 +201,9 @@ function TerminalCard() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
           </span>
-          <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-medium">live</span>
+          <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-medium">
+            live
+          </span>
         </div>
       </div>
 
@@ -206,9 +227,7 @@ function TerminalCard() {
             >
               {item.action.verb}
             </span>
-            <span className="text-[11px] text-foreground/50 truncate">
-              {item.action.target}
-            </span>
+            <span className="text-[11px] text-foreground/50 truncate">{item.action.target}</span>
           </div>
         ))}
 
@@ -221,9 +240,7 @@ function TerminalCard() {
 
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground">
-          AI-managed operations, 24/7
-        </span>
+        <span className="text-[10px] text-muted-foreground">AI-managed operations, 24/7</span>
         <span className="text-[10px] text-muted-foreground/50 tabular-nums">
           {ISAAC_ACTIONS.length} action types
         </span>
@@ -263,8 +280,12 @@ function MetricsBar() {
     <div className="flex gap-8 sm:gap-10 mt-10">
       {stats.map((s) => (
         <div key={s.label}>
-          <div className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">{s.value}</div>
-          <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mt-0.5">{s.label}</div>
+          <div className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+            {s.value}
+          </div>
+          <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mt-0.5">
+            {s.label}
+          </div>
         </div>
       ))}
     </div>
@@ -285,7 +306,8 @@ export function Hero() {
       <div
         className="absolute inset-0 opacity-3 dark:opacity-3 pointer-events-none"
         style={{
-          backgroundImage: "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
+          backgroundImage:
+            "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
           backgroundSize: "60px 60px",
         }}
       />
@@ -317,8 +339,8 @@ export function Hero() {
             </h1>
 
             <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-lg leading-relaxed">
-              Isaac delegates, evaluates, decides and manages your business operations perfectly across 
-              your entire workforce in real-time.
+              Isaac delegates, evaluates, decides and manages your business operations perfectly
+              across your entire workforce in real-time.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -327,8 +349,18 @@ export function Hero() {
                 className="group relative inline-flex items-center gap-2 px-7 py-3 text-[13px] font-semibold text-white rounded-xl bg-primary hover:bg-primary/90 transition-all duration-300 shadow-[0_0_25px_rgba(59,130,246,0.25)] hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:-translate-y-0.5"
               >
                 Start Now
-                <svg className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                <svg
+                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                  />
                 </svg>
                 <div className="absolute inset-0 rounded-xl bg-linear-to-b from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </Link>

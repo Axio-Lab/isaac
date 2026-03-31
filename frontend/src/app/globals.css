@@ -120,6 +120,36 @@
   .glow-subtle {
     box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 8%, transparent);
   }
+
+  .landing-edge-shadow {
+    box-shadow:
+      0 1px 0 rgba(15, 23, 42, 0.08),
+      0 0 0 1px rgba(15, 23, 42, 0.05),
+      0 10px 30px rgba(15, 23, 42, 0.14),
+      0 28px 60px rgba(15, 23, 42, 0.08);
+  }
+
+  .landing-edge-shadow-soft {
+    box-shadow:
+      0 0 0 1px rgba(15, 23, 42, 0.05),
+      0 8px 24px rgba(15, 23, 42, 0.12),
+      0 18px 40px rgba(15, 23, 42, 0.06);
+  }
+}
+
+.dark .landing-edge-shadow {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 14px 40px rgba(0, 0, 0, 0.45),
+    0 28px 70px rgba(0, 0, 0, 0.3);
+}
+
+.dark .landing-edge-shadow-soft {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 10px 28px rgba(0, 0, 0, 0.4),
+    0 22px 48px rgba(0, 0, 0, 0.24);
 }
 
 /* ─── Glass Button ─── */
@@ -307,6 +337,26 @@
 @keyframes cursor-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+@keyframes shimmer-border {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fill-bar {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 /* Smooth scroll for anchor links */
