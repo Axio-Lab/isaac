@@ -1,4 +1,4 @@
-import { Module, Logger, OnModuleInit } from "@nestjs/common";
+import { Module, Logger, OnModuleInit, forwardRef } from "@nestjs/common";
 import * as crypto from "crypto";
 import { PrismaService } from "../common/prisma.service";
 import { ChannelsService } from "./channels.service";
@@ -9,10 +9,11 @@ import { InboundMessageService } from "./inbound-message.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { UploadsModule } from "../uploads/uploads.module";
+import { TasksModule } from "../tasks/tasks.module";
 import { normalizeIncomingExternalId } from "./platform-utils";
 
 @Module({
-  imports: [WhatsAppModule, UploadsModule],
+  imports: [WhatsAppModule, UploadsModule, forwardRef(() => TasksModule)],
   controllers: [ChannelsController, InternalWebhookController],
   providers: [ChannelsService, ChannelMessagingService, InboundMessageService, PrismaService],
   exports: [ChannelsService, ChannelMessagingService, InboundMessageService],

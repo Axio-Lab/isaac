@@ -1,7 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service";
 import { ChannelMessagingService } from "./channel-messaging.service";
 import { EvidenceStorageService } from "../uploads/evidence-storage.service";
+import { TaskFlagService } from "../tasks/task-flag.service";
 import { buildExternalIdCandidates } from "./platform-utils";
 import {
   msgOnboardingSuccess,
@@ -9,6 +10,7 @@ import {
   msgNoPendingSubmission,
   msgSubmissionReceived,
   msgSubmissionReceivedReview,
+  msgSubmissionMissed,
   msgCannotSubmitTaskArchived,
   msgHelpResponse,
   msgItemReceived,
@@ -25,7 +27,9 @@ export class InboundMessageService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly messaging: ChannelMessagingService,
-    private readonly evidenceStorage: EvidenceStorageService
+    private readonly evidenceStorage: EvidenceStorageService,
+    @Inject(forwardRef(() => TaskFlagService))
+    private readonly flagService: TaskFlagService
   ) {}
 
   setVetSubmission(fn: (submissionId: string) => Promise<string>) {
@@ -199,6 +203,39 @@ export class InboundMessageService {
       orderBy: { dueAt: "asc" },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
+
+    const graceMs = ((worker.humanTask.graceMinutes as number | null) || 30) * 60 * 1000;
+    const overdueCutoff = new Date(Date.now() - graceMs);
+
+    if (pendingSubmission && new Date(pendingSubmission.dueAt) < overdueCutoff) {
+      await (this.prisma as any).taskSubmission.update({
+        where: { id: pendingSubmission.id },
+        data: { status: "MISSED" },
+      });
+      await this.flagService.flagMissedSubmission(pendingSubmission.id).catch(() => {});
+      await this.messaging
+        .sendToWorker(
+          worker.id,
+          msgSubmissionMissed(
+            worker.name,
+            worker.humanTask.name,
+            pendingSubmission.dueAt.toISOString().slice(11, 16)
+          )
+        )
+        .catch(() => {});
+      await this.messaging.sendToWorker(
+        worker.id,
+        msgNoPendingSubmission(
+          worker.name,
+          worker.humanTask.name,
+          Array.isArray(worker.humanTask.scheduledTimes)
+            ? worker.humanTask.scheduledTimes.filter((t): t is string => typeof t === "string")
+            : [],
+          worker.humanTask.timezone || "UTC"
+        )
+      );
+      return;
+    }
 
     if (!pendingSubmission) {
       const task = worker.humanTask as {

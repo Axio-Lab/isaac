@@ -194,7 +194,7 @@ export class TaskCronService implements OnModuleInit, OnModuleDestroy {
     const overdue = await (this.prisma as any).taskSubmission.findMany({
       where: {
         humanTaskId: task.id,
-        status: "PENDING",
+        status: { in: ["PENDING", "COLLECTING", "REJECTED"] },
         dueAt: { lt: cutoff },
       },
       include: { worker: true },

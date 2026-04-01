@@ -14,7 +14,12 @@ import { TaskCronService } from "./task-cron.service";
 import { TaskFlagService } from "./task-flag.service";
 
 @Module({
-  imports: [AgentModule, ChannelsModule, ReportsModule, forwardRef(() => AutomatedTasksModule)],
+  imports: [
+    AgentModule,
+    forwardRef(() => ChannelsModule),
+    ReportsModule,
+    forwardRef(() => AutomatedTasksModule),
+  ],
   controllers: [TasksController],
   providers: [
     PrismaService,
