@@ -128,6 +128,17 @@ export function TasksView() {
 
   const humanTasks = data?.tasks ?? [];
   const automatedTasks = autoData?.tasks ?? [];
+  const channelUsageById = useMemo<Record<string, string>>(
+    () =>
+      humanTasks.reduce(
+        (acc, task) => {
+          if (task.taskChannelId) acc[task.taskChannelId] = task.name;
+          return acc;
+        },
+        {} as Record<string, string>
+      ),
+    [humanTasks]
+  );
 
   const allTasks: AnyTask[] = useMemo(() => {
     const human = humanTasks.map((t) => ({ ...t, _taskType: "HUMAN" as const }));
@@ -737,6 +748,7 @@ export function TasksView() {
         createPending={(createTask.isPending || createAutoTask.isPending) && !draftPending}
         updatePending={(updateTask.isPending || updateAutoTask.isPending) && !draftPending}
         channels={channels}
+        channelUsageById={channelUsageById}
         connectedAccounts={connectedAccounts}
         composioAppCatalog={composioAppCatalog}
       />

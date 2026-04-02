@@ -13,6 +13,7 @@ import {
   useDismissWorkerFlag,
 } from "@/hooks/useHumanTasks";
 import type { HumanWorker } from "@/hooks/useHumanTasks";
+import { formatFlagDetails } from "@/lib/flag-details";
 import { PlatformChannelIcon } from "@/lib/channel-icons";
 import { AppPagination } from "@/components/ui/pagination";
 
@@ -243,7 +244,7 @@ export function WorkersDialog({ taskId, platform, open, onOpenChange }: WorkersD
                                   </p>
                                   {flag.details && (
                                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                                      {flag.details}
+                                      {formatFlagDetails(flag.details, flag.humanTask?.timezone)}
                                     </p>
                                   )}
                                 </div>

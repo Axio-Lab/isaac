@@ -56,6 +56,7 @@ interface TaskFormDialogProps {
   createPending: boolean;
   updatePending: boolean;
   channels: TaskChannel[];
+  channelUsageById?: Record<string, string>;
   connectedAccounts: ComposioConnectedAccount[];
   /** From `useComposioApps()` — used to show app logos like on Connected Apps */
   composioAppCatalog?: ComposioApp[];
@@ -407,6 +408,7 @@ export function TaskFormDialog({
   createPending,
   updatePending,
   channels,
+  channelUsageById = {},
   connectedAccounts,
   composioAppCatalog = [],
 }: TaskFormDialogProps) {
@@ -442,10 +444,17 @@ export function TaskFormDialog({
       { value: "", label: "Select a channel..." },
       ...channels.map((ch) => ({
         value: ch.id,
-        label: `${ch.label || ch.id} (${ch.platform})`,
+        label:
+          channelUsageById[ch.id] && channelUsageById[ch.id] !== (editingTask?.name || "")
+            ? `${ch.label || ch.id} (${ch.platform}) — in use by ${channelUsageById[ch.id]}`
+            : `${ch.label || ch.id} (${ch.platform})`,
+        disabled:
+          !!channelUsageById[ch.id] &&
+          channelUsageById[ch.id] !== (editingTask?.name || "") &&
+          ch.id !== form.taskChannelId,
       })),
     ],
-    [channels]
+    [channelUsageById, channels, editingTask?.name, form.taskChannelId]
   );
 
   const dest = form.deliveryDestination;
@@ -873,6 +882,12 @@ export function TaskFormDialog({
                 {channels.length === 0 && (
                   <p className="text-[10px] text-muted-foreground mt-1">
                     No channels configured. Add one in Channels first.
+                  </p>
+                )}
+                {channels.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Channels already assigned to another task are shown as in use and cannot be
+                    selected.
                   </p>
                 )}
               </div>

@@ -7,6 +7,7 @@ import {
   useDismissWorkerFlag,
 } from "@/hooks/useHumanTasks";
 import type { WorkerFlagEvent } from "@/hooks/useHumanTasks";
+import { formatFlagDetails } from "@/lib/flag-details";
 import { AppPagination } from "@/components/ui/pagination";
 import { Loader2, Flag, Check, XCircle, Filter } from "lucide-react";
 
@@ -206,7 +207,7 @@ export function FlaggedWorkersView() {
                           </p>
                           {flag.details && (
                             <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-normal wrap-break-word">
-                              {flag.details}
+                              {formatFlagDetails(flag.details, flag.humanTask?.timezone)}
                             </p>
                           )}
                         </td>
@@ -349,7 +350,9 @@ export function FlaggedWorkersView() {
 
                   <p className="text-[11px] text-foreground">{flag.reasonLabel}</p>
                   {flag.details && (
-                    <p className="text-[10px] text-muted-foreground mt-1">{flag.details}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {formatFlagDetails(flag.details, flag.humanTask?.timezone)}
+                    </p>
                   )}
 
                   <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-muted-foreground">

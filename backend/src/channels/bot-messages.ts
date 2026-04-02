@@ -284,6 +284,22 @@ export function msgTaskActivatedNotice(taskName: string): string {
   );
 }
 
+export function msgTaskPausedNotice(taskName: string): string {
+  return (
+    `The task "${taskName}" has been paused.\n\n` +
+    `Submissions for this task will not be tracked or processed while it remains paused, and Isaac will not review any proof sent for it during this period.\n\n` +
+    `Wait for further instructions here before sending anything else for this task.`
+  );
+}
+
+export function msgTaskResumedNotice(taskName: string): string {
+  return (
+    `The task "${taskName}" has been resumed.\n\n` +
+    `Isaac will start tracking and processing submissions for this task again.\n\n` +
+    `Further instructions and the next submission prompt will be communicated here.`
+  );
+}
+
 export function msgCannotSubmitTaskArchived(workerName: string, taskName: string): string {
   return (
     `Hi ${workerName},\n\n` +

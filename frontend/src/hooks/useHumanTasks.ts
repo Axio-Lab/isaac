@@ -90,6 +90,11 @@ export interface WorkerFlagEvent {
     activeFlagCount?: number;
     totalFlagCount?: number;
   };
+  humanTask?: {
+    id: string;
+    name: string;
+    timezone?: string | null;
+  };
   submission?: {
     id: string;
     dueAt: string;
@@ -140,21 +145,25 @@ export interface TaskComplianceReport {
   avgScore?: number | null;
   passRate?: number | null;
   flaggedWorkerIds: string[];
-  flaggedWorkersSnapshot?: Array<{
-    id: string;
-    workerId: string;
-    workerName: string;
-    reasonType: string;
-    reasonLabel: string;
-    details?: string | null;
-    severity: string;
-    status: string;
-    triggeredAt: string;
-    activeFlagCount: number;
-    totalFlagCount: number;
-    riskLevel: string;
-    metadata?: Record<string, unknown> | null;
-  }> | null;
+  flaggedWorkersSnapshot?: {
+    summary?: string | null;
+    workers: Array<{
+      id: string;
+      workerId: string;
+      workerName: string;
+      reasonType: string;
+      reasonLabel: string;
+      details?: string | null;
+      severity: string;
+      status: string;
+      triggeredAt: string;
+      activeFlagCount: number;
+      totalFlagCount: number;
+      riskLevel: string;
+      taskTimezone?: string;
+      metadata?: Record<string, unknown> | null;
+    }>;
+  } | null;
   documentUrl?: string | null;
   deliveredAt?: string | null;
   deliveredTo?: Record<string, unknown> | null;
@@ -466,6 +475,7 @@ export function useResolveWorkerFlag() {
       queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "workers", "flagged"] });
       queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "flags"] });
       queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "reports"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", "flagged-workers"] });
       toast.success("Flag resolved");
     },
     onError: (e) => toast.error(e.message || "Could not resolve flag"),
@@ -489,6 +499,7 @@ export function useDismissWorkerFlag() {
       queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "workers", "flagged"] });
       queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "flags"] });
       queryClient.invalidateQueries({ queryKey: ["human-tasks", taskId, "reports"] });
+      queryClient.invalidateQueries({ queryKey: ["human-tasks", "flagged-workers"] });
       toast.success("Flag dismissed");
     },
     onError: (e) => toast.error(e.message || "Could not dismiss flag"),

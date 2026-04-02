@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { ChannelMessagingService } from "@/channels/channel-messaging.service";
-import { msgTaskArchivedNotice, msgTaskActivatedNotice } from "@/channels/bot-messages";
+import {
+  msgTaskArchivedNotice,
+  msgTaskActivatedNotice,
+  msgTaskPausedNotice,
+  msgTaskResumedNotice,
+} from "@/channels/bot-messages";
 import { assertTaskNameUniqueForUser } from "./task-name-uniqueness";
 
 export interface HumanTaskCreateInput {
@@ -35,6 +40,37 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly messaging: ChannelMessagingService
   ) {}
+
+  private async assertChannelAvailable(
+    userId: string,
+    channelId: string | null,
+    options?: { excludeTaskId?: string }
+  ) {
+    if (!channelId) return;
+
+    const channel = await (this.prisma as any).taskChannel.findFirst({
+      where: { id: channelId, userId },
+      select: { id: true },
+    });
+    if (!channel) {
+      throw new NotFoundException("Channel not found");
+    }
+
+    const inUseByAnotherTask = await (this.prisma as any).humanTask.findFirst({
+      where: {
+        userId,
+        taskChannelId: channelId,
+        ...(options?.excludeTaskId ? { id: { not: options.excludeTaskId } } : {}),
+      },
+      select: { id: true, name: true },
+    });
+
+    if (inUseByAnotherTask) {
+      throw new BadRequestException(
+        `This channel is already in use by "${inUseByAnotherTask.name}". Choose a different channel.`
+      );
+    }
+  }
 
   async listTasks(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
@@ -118,6 +154,7 @@ export class TasksService {
     await assertTaskNameUniqueForUser(this.prisma, userId, taskName);
 
     const channelId = data.reportChannelId?.trim() || null;
+    await this.assertChannelAvailable(userId, channelId);
 
     return (this.prisma as any).humanTask.create({
       data: {
@@ -159,6 +196,7 @@ export class TasksService {
         incomingTaskChannelId !== undefined ? incomingTaskChannelId : reportChannelId;
       const trimmed =
         channelId != null && String(channelId).trim() ? String(channelId).trim() : null;
+      await this.assertChannelAvailable(userId, trimmed, { excludeTaskId: taskId });
       prismaData.taskChannelId = trimmed;
       prismaData.reportChannelId = null;
     }
@@ -239,6 +277,7 @@ export class TasksService {
       where: { id: taskId },
       data: { status: "PAUSED" },
     });
+    await this.messaging.broadcastToTask(taskId, msgTaskPausedNotice(task.name));
     return { success: true };
   }
 
@@ -254,6 +293,7 @@ export class TasksService {
       where: { id: taskId },
       data: { status: "ACTIVE" },
     });
+    await this.messaging.broadcastToTask(taskId, msgTaskResumedNotice(task.name));
     return { success: true };
   }
 

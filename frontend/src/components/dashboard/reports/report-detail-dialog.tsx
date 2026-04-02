@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 import { X, ExternalLink } from "lucide-react";
 import type { TaskComplianceReport } from "@/hooks/useHumanTasks";
+import { formatFlagDetails } from "@/lib/flag-details";
 
 interface ReportDetailDialogProps {
   report: TaskComplianceReport | null;
@@ -19,6 +20,9 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
         year: "numeric",
       })
     : "";
+  const flaggedSnapshot = Array.isArray(report?.flaggedWorkersSnapshot)
+    ? { summary: null, workers: report?.flaggedWorkersSnapshot ?? [] }
+    : (report?.flaggedWorkersSnapshot ?? null);
 
   return (
     <Dialog.Root open={!!report} onOpenChange={(open) => !open && onClose()}>
@@ -61,49 +65,60 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
                 />
               </div>
 
-              {Array.isArray(report.flaggedWorkersSnapshot) &&
-                report.flaggedWorkersSnapshot.length > 0 && (
-                  <div className="mb-6">
-                    <h2 className="text-[13px] font-semibold text-foreground tracking-tight mb-2">
-                      Flagged Workers
-                    </h2>
-                    <div className="space-y-2">
-                      {report.flaggedWorkersSnapshot.map((flag) => (
-                        <div
-                          key={flag.id}
-                          className="rounded-lg border border-border bg-muted/20 px-3.5 py-3"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                              <p className="text-xs font-semibold text-foreground">
-                                {flag.workerName}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                {flag.reasonLabel}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-medium text-foreground">
-                                {flag.severity}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {new Date(flag.triggeredAt).toLocaleString()}
-                              </p>
-                            </div>
+              {flaggedSnapshot && flaggedSnapshot.workers.length > 0 && (
+                <div className="mb-6">
+                  <h2 className="text-[13px] font-semibold text-foreground tracking-tight mb-2">
+                    Flagged Workers
+                  </h2>
+                  <div className="rounded-lg border border-primary/15 bg-primary/5 px-3.5 py-3 mb-3">
+                    <p className="text-[11px] leading-[1.7] text-foreground">
+                      {flaggedSnapshot.summary ||
+                        buildFlagExecutiveSummary(flaggedSnapshot.workers)}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    {summarizeFlaggedWorkers(flaggedSnapshot.workers).map((worker) => (
+                      <div
+                        key={worker.workerId}
+                        className="rounded-lg border border-border bg-muted/20 px-3.5 py-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">
+                              {worker.workerName}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {worker.reasonsSummary || "Flagged activity recorded"}
+                            </p>
                           </div>
-                          {flag.details && (
-                            <p className="text-[11px] text-muted-foreground mt-2">{flag.details}</p>
-                          )}
-                          <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-muted-foreground">
-                            <span>Open flags: {flag.activeFlagCount}</span>
-                            <span>Total flags: {flag.totalFlagCount}</span>
-                            <span>Risk: {flag.riskLevel}</span>
+                          <div className="text-right">
+                            <p className="text-[10px] font-medium text-foreground">
+                              {worker.topSeverity}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(worker.latestTriggeredAt).toLocaleString()}
+                            </p>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        <p className="text-[11px] text-foreground mt-2">
+                          {buildWorkerFlagNarrative(worker)}
+                        </p>
+                        {worker.latestDetails && (
+                          <p className="text-[11px] text-muted-foreground mt-2">
+                            Latest issue:{" "}
+                            {formatFlagDetails(worker.latestDetails, worker.taskTimezone)}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-muted-foreground">
+                          <span>Open flags: {worker.activeFlagCount}</span>
+                          <span>Total flags: {worker.totalFlagCount}</span>
+                          <span>Risk: {worker.riskLevel}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
               <div className="report-prose">
                 <ReactMarkdown
@@ -206,6 +221,95 @@ export function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps)
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+type ReportFlagSnapshot = NonNullable<
+  NonNullable<TaskComplianceReport["flaggedWorkersSnapshot"]>["workers"]
+>[number];
+
+function buildFlagExecutiveSummary(flags: ReportFlagSnapshot[]) {
+  const workerSummaries = summarizeFlaggedWorkers(flags);
+  const workerCount = workerSummaries.length;
+  const totalFlags = flags.length;
+  const criticalWorkers = workerSummaries.filter((worker) => worker.riskLevel === "CRITICAL");
+  const topWorker = workerSummaries[0];
+  if (!topWorker) return "No flagged worker activity recorded for this report period.";
+
+  const leadSentence =
+    workerCount === 1
+      ? `${topWorker.workerName} is the only flagged worker today and remains the operational priority.`
+      : `${workerCount} workers were flagged today, with ${topWorker.workerName} carrying the highest concentration of risk.`;
+
+  const exposureSentence =
+    topWorker.flagCount === 1
+      ? `${topWorker.workerName} recorded a single flagged incident, but the worker is still sitting at ${topWorker.riskLabel}.`
+      : `${topWorker.workerName} generated ${topWorker.flagCount} flagged incidents today and is currently ${topWorker.riskLabel}.`;
+
+  const escalationSentence =
+    criticalWorkers.length > 0
+      ? `${criticalWorkers.length === 1 ? "Immediate review is required before the next operating cycle." : `${criticalWorkers.length} workers are now in the critical band and need immediate review before the next operating cycle.`}`
+      : `No worker is yet in the critical band, but the flagged activity should be addressed before the next operating cycle.`;
+
+  return [leadSentence, exposureSentence, escalationSentence].filter(Boolean).join(" ");
+}
+
+function buildWorkerFlagNarrative(worker: ReturnType<typeof summarizeFlaggedWorkers>[number]) {
+  const incidentText =
+    worker.flagCount === 1 ? "1 flagged incident" : `${worker.flagCount} flagged incidents`;
+  return `${worker.workerName} recorded ${incidentText} in this reporting window and is currently ${worker.riskLabel}.`;
+}
+
+function summarizeFlaggedWorkers(flags: ReportFlagSnapshot[]) {
+  const grouped = new Map<string, ReportFlagSnapshot[]>();
+
+  for (const flag of flags) {
+    const bucket = grouped.get(flag.workerId) ?? [];
+    bucket.push(flag);
+    grouped.set(flag.workerId, bucket);
+  }
+
+  return Array.from(grouped.values())
+    .map((workerFlags) => {
+      const sorted = [...workerFlags].sort(
+        (a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
+      );
+      const latest = sorted[0];
+      const severityRank = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 } as const;
+      const topSeverity = sorted.reduce((highest, current) =>
+        severityRank[current.severity as keyof typeof severityRank] >
+        severityRank[highest.severity as keyof typeof severityRank]
+          ? current
+          : highest
+      );
+
+      const reasonCounts = new Map<string, number>();
+      for (const flag of sorted) {
+        reasonCounts.set(flag.reasonLabel, (reasonCounts.get(flag.reasonLabel) ?? 0) + 1);
+      }
+
+      const topReasons = Array.from(reasonCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(([label, count]) => (count > 1 ? `${label} (${count})` : label));
+
+      return {
+        workerId: latest.workerId,
+        workerName: latest.workerName,
+        flagCount: sorted.length,
+        topSeverity: topSeverity.severity,
+        riskLevel: latest.riskLevel,
+        riskLabel: latest.riskLevel.toLowerCase().replace(/_/g, " "),
+        activeFlagCount: latest.activeFlagCount,
+        totalFlagCount: latest.totalFlagCount,
+        latestTriggeredAt: latest.triggeredAt,
+        latestDetails: latest.details,
+        taskTimezone: latest.taskTimezone,
+        reasonsSummary: topReasons.join(" • "),
+      };
+    })
+    .sort(
+      (a, b) => new Date(b.latestTriggeredAt).getTime() - new Date(a.latestTriggeredAt).getTime()
+    );
 }
 
 function KpiCard({

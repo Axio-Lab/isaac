@@ -4,7 +4,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type TaskSelectOption = { value: string; label: string };
+export type TaskSelectOption = { value: string; label: string; disabled?: boolean };
 
 const defaultLabelClass = "block text-[10px] font-medium text-muted-foreground mb-1";
 
@@ -78,8 +78,9 @@ export function TaskSelectDropdown({
             {options.map((opt) => (
               <DropdownMenu.Item
                 key={opt.value === "" ? `__empty__-${opt.label}` : opt.value}
+                disabled={opt.disabled}
                 className={cn(
-                  "cursor-pointer rounded-md px-2.5 py-1.5 text-[11px] outline-none data-highlighted:bg-muted data-highlighted:text-foreground",
+                  "cursor-pointer rounded-md px-2.5 py-1.5 text-[11px] outline-none data-highlighted:bg-muted data-highlighted:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
                   value === opt.value && "bg-muted font-medium"
                 )}
                 onSelect={() => onChange(opt.value)}

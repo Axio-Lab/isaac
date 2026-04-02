@@ -44,6 +44,70 @@ export class TaskReportService {
     this.generateText = fn;
   }
 
+  private async buildFlaggedWorkersSummary(params: {
+    taskName: string;
+    periodStart: Date;
+    periodEnd: Date;
+    flaggedWorkersSnapshot: Array<Record<string, any>>;
+  }) {
+    const { taskName, periodStart, periodEnd, flaggedWorkersSnapshot } = params;
+    if (flaggedWorkersSnapshot.length === 0) return null;
+
+    if (!this.generateText) {
+      const criticalCount = flaggedWorkersSnapshot.filter(
+        (flag) => flag.riskLevel === "CRITICAL"
+      ).length;
+      const topWorker = flaggedWorkersSnapshot[0];
+      return criticalCount > 0
+        ? `${topWorker.workerName} is the immediate operating risk for ${taskName}, and flagged activity should be reviewed before the next shift.`
+        : `${flaggedWorkersSnapshot.length} flagged incidents were recorded for ${taskName}, with follow-up required before the next operating cycle.`;
+    }
+
+    const groupedByWorker = flaggedWorkersSnapshot.reduce(
+      (acc, flag) => {
+        const bucket = acc[flag.workerId] ?? [];
+        bucket.push(flag);
+        acc[flag.workerId] = bucket;
+        return acc;
+      },
+      {} as Record<string, Array<Record<string, any>>>
+    );
+
+    const workerLines = Object.values(groupedByWorker).map((workerFlags) => {
+      const latest = [...workerFlags].sort(
+        (a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime()
+      )[0];
+      return [
+        `Worker: ${latest.workerName}`,
+        `Incidents today: ${workerFlags.length}`,
+        `Current risk: ${latest.riskLevel}`,
+        `Current open flags: ${latest.activeFlagCount}`,
+        `Current total flags: ${latest.totalFlagCount}`,
+        `Latest issue: ${latest.details || latest.reasonLabel}`,
+      ].join("\n");
+    });
+
+    const userPrompt =
+      `Task: ${taskName}\n` +
+      `Window: ${periodStart.toISOString()} to ${periodEnd.toISOString()}\n\n` +
+      `Flagged worker context:\n${workerLines.join("\n\n")}`;
+
+    try {
+      const { text } = await this.generateText({
+        systemPrompt: getTaskInstructions("report"),
+        userPrompt,
+      });
+      return text
+        .replace(/[#*_`>-]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    } catch (err: any) {
+      this.logger.warn(`Flagged worker summary generation failed: ${err.message}`);
+      const topWorker = flaggedWorkersSnapshot[0];
+      return `${topWorker.workerName} is the immediate operating risk for ${taskName}, and flagged activity should be reviewed before the next shift.`;
+    }
+  }
+
   async generateDailyReport(taskId: string, userId: string) {
     const task = await (this.prisma as any).humanTask.findFirst({
       where: { id: taskId, userId },
@@ -125,6 +189,12 @@ export class TaskReportService {
       periodStart,
       periodEnd
     );
+    const flaggedWorkersSummary = await this.buildFlaggedWorkersSummary({
+      taskName: task.name,
+      periodStart,
+      periodEnd,
+      flaggedWorkersSnapshot,
+    });
     const flaggedWorkerIds = [...new Set(flaggedWorkersSnapshot.map((flag) => flag.workerId))];
     const flaggedWorkersText =
       flaggedWorkersSnapshot.length > 0
@@ -181,7 +251,13 @@ export class TaskReportService {
         avgScore,
         passRate,
         flaggedWorkerIds,
-        flaggedWorkersSnapshot,
+        flaggedWorkersSnapshot:
+          flaggedWorkersSnapshot.length > 0
+            ? {
+                summary: flaggedWorkersSummary,
+                workers: flaggedWorkersSnapshot,
+              }
+            : null,
       },
     });
 

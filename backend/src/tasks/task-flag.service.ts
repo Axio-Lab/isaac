@@ -16,6 +16,19 @@ type FlagReasonType =
 export class TaskFlagService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private formatUtcDateTime(date: Date) {
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "UTC",
+      timeZoneName: "short",
+    }).format(date);
+  }
+
   private async assertTask(taskId: string, userId: string) {
     const task = await (this.prisma as any).humanTask.findFirst({
       where: { id: taskId, userId },
@@ -127,7 +140,8 @@ export class TaskFlagService {
       priorCount >= 1 ? "REPEATED_MISSED_DEADLINE" : "MISSED_DEADLINE";
     const severity: FlagSeverity =
       priorCount >= 2 ? "CRITICAL" : priorCount >= 1 ? "HIGH" : "MEDIUM";
-    const dueAt = new Date(submission.dueAt).toISOString();
+    const dueAt = new Date(submission.dueAt);
+    const formattedDueAt = this.formatUtcDateTime(dueAt);
 
     return this.createFlagEvent({
       userId: submission.humanTask.userId,
@@ -139,10 +153,10 @@ export class TaskFlagService {
         reasonType === "REPEATED_MISSED_DEADLINE"
           ? `${submission.worker.name} has repeated missed deadlines`
           : `${submission.worker.name} missed a deadline`,
-      details: `${submission.worker.name} missed the submission deadline for ${submission.humanTask.name} due at ${dueAt}.`,
+      details: `${submission.worker.name} missed the submission deadline for ${submission.humanTask.name} due at ${formattedDueAt}.`,
       severity,
       metadata: {
-        dueAt,
+        dueAt: dueAt.toISOString(),
         rollingMissedCount30d: priorCount + 1,
       },
       dedupeKey: `missed:${submission.id}`,
@@ -218,7 +232,7 @@ export class TaskFlagService {
             status: true,
           },
         },
-        humanTask: { select: { id: true, name: true } },
+        humanTask: { select: { id: true, name: true, timezone: true } },
         submission: { select: { id: true, dueAt: true, status: true, aiScore: true } },
       },
       orderBy: { triggeredAt: "desc" },
@@ -249,6 +263,7 @@ export class TaskFlagService {
             totalFlagCount: true,
           },
         },
+        humanTask: { select: { id: true, name: true, timezone: true } },
         submission: { select: { id: true, dueAt: true, status: true, aiScore: true } },
       },
       orderBy: { triggeredAt: "desc" },
@@ -267,6 +282,9 @@ export class TaskFlagService {
           where: { status: "OPEN" },
           orderBy: { triggeredAt: "desc" },
           take: 5,
+          include: {
+            humanTask: { select: { id: true, name: true, timezone: true } },
+          },
         },
         submissions: {
           orderBy: { dueAt: "desc" },
@@ -352,6 +370,7 @@ export class TaskFlagService {
             riskLevel: true,
           },
         },
+        humanTask: { select: { id: true, name: true, timezone: true } },
       },
       orderBy: { triggeredAt: "desc" },
     });
@@ -370,6 +389,7 @@ export class TaskFlagService {
       totalFlagCount: flag.worker?.totalFlagCount ?? 0,
       riskLevel: flag.worker?.riskLevel ?? "HEALTHY",
       metadata: flag.metadata ?? null,
+      taskTimezone: (flag as any).humanTask?.timezone ?? "UTC",
     }));
   }
 

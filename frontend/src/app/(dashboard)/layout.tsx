@@ -2,9 +2,10 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth-client";
+import { authenticatedFetch, API_URL } from "@/lib/api-client";
 import { useTheme } from "@/app/providers";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CheckSquare,
@@ -22,6 +23,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Camera,
 } from "lucide-react";
 
 const navItems = [
@@ -41,6 +43,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -51,6 +56,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  const userInitial = useMemo(
+    () => user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?",
+    [user?.email, user?.name]
+  );
+  const resolvedUserImage = useMemo(() => {
+    const source = avatarOverride || user?.image || null;
+    if (!source) return null;
+    if (/^https?:\/\//i.test(source) || source.startsWith("data:")) return source;
+    return `${API_URL}${source.startsWith("/") ? source : `/${source}`}`;
+  }, [avatarOverride, user?.image]);
 
   if (isLoading) {
     return (
@@ -64,10 +80,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (!isAuthenticated) return null;
-
   const currentPage = navItems.find(
     (item) => pathname === item.href || pathname.startsWith(item.href + "/")
   );
+
+  async function handleAvatarFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setAvatarUploading(true);
+      const res = await authenticatedFetch("/api/uploads/avatar", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || body.message || res.statusText);
+      }
+      const body = (await res.json()) as { url: string };
+      setAvatarOverride(body.url);
+    } catch (error) {
+      console.error("Avatar upload failed", error);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -122,9 +164,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <div className="p-3 border-t border-border shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-full bg-linear-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center text-[10px] font-semibold shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?"}
-            </div>
+            <UserAvatar
+              image={resolvedUserImage}
+              fallback={userInitial}
+              uploading={avatarUploading}
+              onClick={() => avatarInputRef.current?.click()}
+            />
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileChange}
+            />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground truncate">{user?.name || "User"}</p>
               <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
@@ -187,5 +239,64 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+  );
+}
+
+function UserAvatar({
+  image,
+  fallback,
+  uploading,
+  onClick,
+}: {
+  image?: string | null;
+  fallback: string;
+  uploading: boolean;
+  onClick: () => void;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [image]);
+
+  if (image && !imageFailed) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="relative h-7 w-7 rounded-full shrink-0 overflow-hidden border border-border/60"
+        title="Upload custom profile image"
+      >
+        <img
+          src={image}
+          alt="User avatar"
+          className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+        <span className="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border border-background bg-card text-muted-foreground flex items-center justify-center">
+          {uploading ? (
+            <Loader2 className="h-2 w-2 animate-spin" />
+          ) : (
+            <Camera className="h-2 w-2" />
+          )}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative h-7 w-7 rounded-full bg-linear-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center text-[10px] font-semibold shrink-0"
+      title="Upload custom profile image"
+    >
+      {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : fallback}
+      {!uploading && (
+        <span className="absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border border-background bg-card text-muted-foreground flex items-center justify-center">
+          <Camera className="h-2 w-2" />
+        </span>
+      )}
+    </button>
   );
 }
