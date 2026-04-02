@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma.service";
 import { AgentModule } from "@/agent/agent.module";
 import { ReportsModule } from "@/reports/reports.module";
@@ -7,7 +7,7 @@ import { AutomatedTasksService } from "./automated-tasks.service";
 import { AutomatedTaskRunnerService } from "./automated-task-runner.service";
 
 @Module({
-  imports: [AgentModule, ReportsModule],
+  imports: [forwardRef(() => AgentModule), ReportsModule],
   controllers: [AutomatedTasksController],
   providers: [PrismaService, AutomatedTasksService, AutomatedTaskRunnerService],
   exports: [AutomatedTasksService, AutomatedTaskRunnerService],

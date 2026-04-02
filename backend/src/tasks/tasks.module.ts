@@ -15,7 +15,7 @@ import { TaskFlagService } from "./task-flag.service";
 
 @Module({
   imports: [
-    AgentModule,
+    forwardRef(() => AgentModule),
     forwardRef(() => ChannelsModule),
     ReportsModule,
     forwardRef(() => AutomatedTasksModule),
