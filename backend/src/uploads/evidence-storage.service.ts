@@ -1,10 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile } from "fs/promises";
 import { join, extname } from "path";
-import { existsSync } from "fs";
-
-const UPLOADS_DIR = join(__dirname, "..", "..", "uploads");
+import { resolveUploadsDir } from "./uploads-path";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -32,13 +30,10 @@ export class EvidenceStorageService {
       const ext = MIME_TO_EXT[contentType] || extname(new URL(externalUrl).pathname) || ".jpg";
 
       const filename = `${randomUUID()}${ext}`;
-
-      if (!existsSync(UPLOADS_DIR)) {
-        await mkdir(UPLOADS_DIR, { recursive: true });
-      }
+      const uploadsDir = resolveUploadsDir();
 
       const buffer = Buffer.from(await res.arrayBuffer());
-      await writeFile(join(UPLOADS_DIR, filename), buffer);
+      await writeFile(join(uploadsDir, filename), buffer);
 
       const stableUrl = `/api/uploads/${filename}`;
       this.logger.log(`Evidence stored: ${stableUrl} (${buffer.length} bytes)`);

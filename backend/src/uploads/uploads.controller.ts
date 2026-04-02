@@ -19,8 +19,9 @@ import { extname, join } from "path";
 import { existsSync } from "fs";
 import { PrismaService } from "../common/prisma.service";
 import { AuthGuard } from "../auth/auth.guard";
+import { resolveUploadsDir } from "./uploads-path";
 
-const UPLOADS_DIR = join(__dirname, "..", "..", "uploads");
+const UPLOADS_DIR = resolveUploadsDir();
 
 const storage = diskStorage({
   destination: UPLOADS_DIR,
