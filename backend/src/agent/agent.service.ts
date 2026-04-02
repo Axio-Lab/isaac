@@ -11,6 +11,8 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import { PrismaService } from "../common/prisma.service";
 import { ComposioService } from "../composio/composio.service";
+import { ChannelsService } from "../channels/channels.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { isaacTools, type ToolContext } from "./isaac-mcp-tools";
 import { getIsaacSystemPrompt } from "./isaac-system-prompt";
 import { getBuiltinSubagents } from "./subagents";
@@ -47,9 +49,18 @@ export interface AgentQueryOptions {
 
 @Injectable()
 export class AgentService {
+  private reportSvc: NonNullable<NonNullable<ToolContext["services"]>["reportService"]> | null =
+    null;
+
+  setReportService(svc: NonNullable<NonNullable<ToolContext["services"]>["reportService"]>) {
+    this.reportSvc = svc;
+  }
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly composioService: ComposioService
+    private readonly composioService: ComposioService,
+    private readonly channelsService: ChannelsService,
+    private readonly whatsappService: WhatsAppService
   ) {}
 
   private getModel(override?: string): string {
@@ -132,6 +143,12 @@ export class AgentService {
       const toolContext: ToolContext = {
         userId,
         prisma: this.prisma,
+        services: {
+          ...(this.reportSvc ? { reportService: this.reportSvc } : {}),
+          channelsService: this.channelsService,
+          composioService: this.composioService,
+          whatsappService: this.whatsappService,
+        },
       };
 
       const isaacMcpServer = createSdkMcpServer({

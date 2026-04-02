@@ -58,9 +58,11 @@ export class TaskReportService {
         (flag) => flag.riskLevel === "CRITICAL"
       ).length;
       const topWorker = flaggedWorkersSnapshot[0];
-      return criticalCount > 0
-        ? `${topWorker.workerName} is the immediate operating risk for ${taskName}, and flagged activity should be reviewed before the next shift.`
-        : `${flaggedWorkersSnapshot.length} flagged incidents were recorded for ${taskName}, with follow-up required before the next operating cycle.`;
+      return this.normalizeFlagSummary(
+        criticalCount > 0
+          ? `${topWorker.workerName} is the immediate operating risk for ${taskName}, and flagged activity should be reviewed before the next shift.`
+          : `${flaggedWorkersSnapshot.length} flagged incidents were recorded for ${taskName}, with follow-up required before the next operating cycle.`
+      );
     }
 
     const groupedByWorker = flaggedWorkersSnapshot.reduce(
@@ -94,18 +96,36 @@ export class TaskReportService {
 
     try {
       const { text } = await this.generateText({
-        systemPrompt: getTaskInstructions("report"),
+        systemPrompt: getTaskInstructions("flagged-summary"),
         userPrompt,
       });
-      return text
-        .replace(/[#*_`>-]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+      return this.normalizeFlagSummary(text.trim());
     } catch (err: any) {
       this.logger.warn(`Flagged worker summary generation failed: ${err.message}`);
       const topWorker = flaggedWorkersSnapshot[0];
-      return `${topWorker.workerName} is the immediate operating risk for ${taskName}, and flagged activity should be reviewed before the next shift.`;
+      return this.normalizeFlagSummary(
+        `${topWorker.workerName} is the immediate operating risk for ${taskName}, and flagged activity should be reviewed before the next shift.`
+      );
     }
+  }
+
+  /** One sentence for report, email, and document. */
+  private normalizeFlagSummary(text: string): string {
+    const t = text.replace(/\s+/g, " ").trim();
+    if (!t) return t;
+    const m = t.match(/^(.+?[.!?])(?:\s|$)/);
+    if (m) return m[1].trim();
+    return t.length > 280 ? `${t.slice(0, 277).trim()}...` : t;
+  }
+
+  private stripTrailingFlaggedSection(markdown: string): string {
+    return markdown.replace(/\n##\s*Flagged Workers\s*[\s\S]*$/i, "").trimEnd();
+  }
+
+  private appendFlaggedWorkersMarkdown(markdown: string, summary: string | null): string {
+    if (!summary?.trim()) return markdown;
+    const base = this.stripTrailingFlaggedSection(markdown).trimEnd();
+    return `${base}\n\n## Flagged Workers\n\n${summary.trim()}`;
   }
 
   async generateDailyReport(taskId: string, userId: string) {
@@ -196,17 +216,11 @@ export class TaskReportService {
       flaggedWorkersSnapshot,
     });
     const flaggedWorkerIds = [...new Set(flaggedWorkersSnapshot.map((flag) => flag.workerId))];
-    const flaggedWorkersText =
-      flaggedWorkersSnapshot.length > 0
-        ? flaggedWorkersSnapshot
-            .map(
-              (flag) =>
-                `${flag.workerName} | ${flag.reasonLabel} | ${new Date(flag.triggeredAt).toISOString()} | severity ${flag.severity}${flag.details ? ` | ${flag.details}` : ""}`
-            )
-            .join("\n")
-        : "None";
-
     let summaryMarkdown: string;
+
+    const flagAppendixNote =
+      `Flagged-worker incidents in this reporting window: ${flaggedWorkersSnapshot.length}. ` +
+      `A one-sentence Flagged Workers section will be appended after your markdown; do not repeat flag severity, risk, or incident detail in Worker Review, Issues, or Required Actions.`;
 
     if (this.generateText) {
       const reportData =
@@ -214,7 +228,7 @@ export class TaskReportService {
         `Total Due: ${totalDue}\nSubmitted: ${submitted}\nMissed: ${missed}\n` +
         `Avg Score: ${avgScore ?? "N/A"}\nPass Rate: ${passRate ?? "N/A"}%\n\n` +
         `Worker Breakdown:\n${hasActiveWorkers ? workerBreakdown.join("\n") || "No submissions yet" : noWorkersMessage}\n\n` +
-        `Flagged Workers:\n${flaggedWorkersText}`;
+        `${flagAppendixNote}`;
 
       const { text } = await this.generateText({
         systemPrompt: getTaskInstructions("report"),
@@ -223,22 +237,18 @@ export class TaskReportService {
       summaryMarkdown = this.cleanReportOutput(text);
     } else {
       summaryMarkdown =
-        `# Daily Report: ${task.name}\n\n` +
-        `**Date:** ${periodStart.toISOString().split("T")[0]}\n` +
-        `**Total Due:** ${totalDue} | **Submitted:** ${submitted} | **Missed:** ${missed}\n` +
-        `**Avg Score:** ${avgScore ?? "N/A"} | **Pass Rate:** ${passRate ?? "N/A"}%\n\n` +
-        `## Worker Breakdown\n${hasActiveWorkers ? workerBreakdown.map((l) => `- ${l}`).join("\n") || "- No submissions yet" : `- ${noWorkersMessage}`}\n\n` +
-        `## Flagged Workers\n${
-          flaggedWorkersSnapshot.length > 0
-            ? flaggedWorkersSnapshot
-                .map(
-                  (flag) =>
-                    `- ${flag.workerName}: ${flag.reasonLabel} (${flag.severity}) on ${new Date(flag.triggeredAt).toLocaleString()}${flag.details ? ` — ${flag.details}` : ""}`
-                )
-                .join("\n")
-            : "None"
-        }`;
+        `## Worker Review\n\n` +
+        (hasActiveWorkers
+          ? workerBreakdown.length > 0
+            ? workerBreakdown.map((l) => `- ${l}`).join("\n")
+            : "- No submissions yet."
+          : `- ${noWorkersMessage}`) +
+        (missed > 0
+          ? `\n\n## Issues\n\n- ${missed} submission(s) marked missed in this window.\n`
+          : "");
     }
+
+    summaryMarkdown = this.appendFlaggedWorkersMarkdown(summaryMarkdown, flaggedWorkersSummary);
 
     const report = await (this.prisma as any).taskComplianceReport.create({
       data: {
@@ -380,11 +390,12 @@ export class TaskReportService {
   }
 
   /**
-   * Short text for email / chat delivery. Uses only the Worker Review section so we
-   * do not concatenate Issues bullets into one awkward line (first-N-lines was doing that).
+   * Short text for email / chat delivery: Worker Review (up to two sentences) plus
+   * the one-sentence Flagged Workers line when present.
    */
   private extractExecSummary(markdown: string): string {
     const workerSection = this.extractMarkdownSection(markdown, "Worker Review");
+    const flaggedSection = this.extractMarkdownSection(markdown, "Flagged Workers");
     const source = workerSection ?? this.fallbackReportProse(markdown);
 
     const lines = source
@@ -404,19 +415,32 @@ export class TaskReportService {
     }
 
     const joined = parts.join(" ");
-    if (!joined) return markdown.slice(0, 280).trim();
-
-    const sentenceSplit = joined.match(/[^.!?]+(?:[.!?]+|$)/g);
-    if (sentenceSplit && sentenceSplit.length > 0) {
-      const two = sentenceSplit
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .slice(0, 2)
-        .join(" ")
-        .trim();
-      if (two) return two;
+    let workerSummary = "";
+    if (joined) {
+      const sentenceSplit = joined.match(/[^.!?]+(?:[.!?]+|$)/g);
+      if (sentenceSplit && sentenceSplit.length > 0) {
+        workerSummary = sentenceSplit
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 2)
+          .join(" ")
+          .trim();
+      } else {
+        workerSummary = joined.slice(0, 400).trim();
+      }
+    } else {
+      workerSummary = markdown.slice(0, 280).trim();
     }
-    return joined.slice(0, 400).trim();
+
+    const flagLine = flaggedSection
+      ? (flaggedSection
+          .split("\n")
+          .map((l) => l.trim())
+          .find((l) => l.length > 0 && !l.startsWith("#")) ?? "")
+      : "";
+
+    const combined = [workerSummary, flagLine].filter(Boolean).join(" ");
+    return combined || markdown.slice(0, 280).trim();
   }
 
   private extractMarkdownSection(full: string, title: string): string | null {
@@ -446,7 +470,59 @@ export class TaskReportService {
       cleaned = cleaned.slice(headingIdx);
     }
 
-    return cleaned.trim();
+    cleaned = cleaned.trim();
+    cleaned = this.normalizeMarkdownListSections(cleaned);
+    return cleaned;
+  }
+
+  /**
+   * Splits markdown into sections at every "## Heading" boundary, then runs
+   * bullet normalisation on the Issues section. Avoids regex lookahead bugs.
+   */
+  private normalizeMarkdownListSections(markdown: string): string {
+    const sectionBoundary = /(?=^## )/m;
+    const sections = markdown.split(sectionBoundary);
+
+    return sections
+      .map((section) => {
+        if (!/^## Issues\b/i.test(section.trimStart())) return section;
+
+        const newlineIdx = section.indexOf("\n");
+        if (newlineIdx === -1) return section;
+
+        const heading = section.slice(0, newlineIdx);
+        const body = section.slice(newlineIdx + 1);
+
+        return `${heading}\n\n${this.expandInlineBulletsToMarkdownList(body.trim())}\n`;
+      })
+      .join("");
+  }
+
+  private expandInlineBulletsToMarkdownList(body: string): string {
+    if (!body) return body;
+
+    const lines = body.split("\n");
+    const out: string[] = [];
+
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+
+      const hasInlineBullets = (t.includes(" • ") || t.startsWith("• ")) && t.split("•").length > 2;
+
+      if (hasInlineBullets) {
+        t.split(/\s*•\s*/)
+          .map((p) => p.replace(/^[-*•]\s*/, "").trim())
+          .filter(Boolean)
+          .forEach((p) => out.push(`- ${p}`));
+      } else if (/^[-*]\s+/.test(t)) {
+        out.push(t);
+      } else {
+        out.push(`- ${t.replace(/^[-*•]\s*/, "")}`);
+      }
+    }
+
+    return out.join("\n");
   }
 
   /** First prose block before any ## heading (legacy reports without Worker Review). */

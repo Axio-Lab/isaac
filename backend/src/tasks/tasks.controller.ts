@@ -11,6 +11,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  OnModuleInit,
 } from "@nestjs/common";
 import { AuthGuard } from "@/auth/auth.guard";
 import { AgentService } from "@/agent/agent.service";
@@ -23,7 +24,7 @@ import { getTaskInstructions } from "@/agent/isaac-system-prompt";
 
 @Controller("human-tasks")
 @UseGuards(AuthGuard)
-export class TasksController {
+export class TasksController implements OnModuleInit {
   constructor(
     private readonly tasksService: TasksService,
     private readonly workerService: TaskWorkerService,
@@ -32,6 +33,10 @@ export class TasksController {
     private readonly flagService: TaskFlagService,
     private readonly agentService: AgentService
   ) {}
+
+  onModuleInit() {
+    this.agentService.setReportService(this.reportService);
+  }
 
   // ─── AI Fill ──────────────────────────────────────────────────────
 

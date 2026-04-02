@@ -201,7 +201,12 @@ export async function getIsaacSystemPrompt(userContext: UserContext): Promise<st
 
 // ─── Task-specific instructions (identity + output format) ────────────
 
-export type IsaacTask = "report" | "vetting" | "ai-fill-human" | "ai-fill-automated";
+export type IsaacTask =
+  | "report"
+  | "vetting"
+  | "ai-fill-human"
+  | "ai-fill-automated"
+  | "flagged-summary";
 
 const TASK_INSTRUCTIONS: Record<IsaacTask, string> = {
   report: `
@@ -209,6 +214,11 @@ OUTPUT MODE: Daily compliance report (markdown).
 
 Do not repeat the headline numbers (total due, submitted, missed, avg score, pass rate).
 Those are already displayed separately in the UI. Your report adds context, not duplication.
+
+If the user message says a Flagged Workers summary will be appended separately by the system,
+do not repeat flag severity, risk level, critical tags, or incident-by-incident flag detail in
+Worker Review, Issues, or Required Actions. Describe submission outcomes only (what was due,
+what was submitted or missed, scores when relevant).
 
 Structure (use exactly these sections):
 
@@ -218,10 +228,24 @@ State what they completed, what they missed, and their score if available.
 Be specific and factual. No table needed.
 
 ## Issues
-Bullet list of problems worth noting, if any. Omit this section entirely if none.
+Problems worth noting, if any. Omit this section entirely if none.
+
+NEVER write issues as inline text or as "• item1 • item2 • item3" on one line.
+ALWAYS write one issue per line, each starting with "- " (hyphen and space). Example:
+- First issue goes here
+- Second issue goes here
+- Third issue goes here
 
 ## Required Actions
-Numbered list of specific next steps, if any. Omit this section entirely if none.
+Specific next steps, if any. Omit this section entirely if none.
+
+NEVER write steps as inline text on one line.
+ALWAYS write one step per line, numbered. Example:
+1. First action goes here
+2. Second action goes here
+3. Third action goes here
+
+Do not add a ## Flagged Workers section; the system appends that in one sentence when needed.
 
 Keep the entire report under 200 words. Be direct. No summary section, no overview section.
 
@@ -289,6 +313,16 @@ Rules:
 - "composioApps": UPPERCASE names. Include ONLY apps that appear in the user's connected-apps list from the context line. If the task needs no external tool, use [].
 - "connectSuggestions": For each Composio app that would help but is NOT connected, add one object. If none needed, use []. Do not duplicate apps they already have.
 - Only include object keys you can confidently infer. Return ONLY the JSON object.
+`.trim(),
+
+  "flagged-summary": `
+OUTPUT MODE: Flagged worker brief (plain text, one sentence only).
+
+You are writing the Flagged Workers line that appears at the bottom of a daily compliance report.
+Output exactly ONE sentence. No headings. No bullet points. No markdown. No preamble.
+Do not start with "I", "Here is", "This is", or any conversational opener.
+State the operational risk directly: who is the concern, what the pattern is, and whether immediate action is required.
+Example output: Timalie remains the critical risk today with two missed deadlines, bringing her total open flags to six and requiring immediate review before the next shift.
 `.trim(),
 };
 
