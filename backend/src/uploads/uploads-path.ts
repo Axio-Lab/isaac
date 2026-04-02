@@ -14,7 +14,10 @@ export function resolveUploadsDir(): string {
     try {
       mkdirSync(dir, { recursive: true });
     } catch (err: unknown) {
-      const code = err && typeof err === "object" && "code" in err ? (err as NodeJS.ErrnoException).code : undefined;
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? (err as NodeJS.ErrnoException).code
+          : undefined;
       const msg = err instanceof Error ? err.message : String(err);
       if (code === "EACCES" || code === "EPERM") {
         throw new Error(
