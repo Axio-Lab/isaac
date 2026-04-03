@@ -1,10 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { resolveUploadsDir } from "./uploads/uploads-path";
 
 async function bootstrap() {
-  resolveUploadsDir();
-
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
   });

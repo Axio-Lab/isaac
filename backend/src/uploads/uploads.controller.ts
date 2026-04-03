@@ -1,41 +1,27 @@
 import {
   Controller,
   Post,
-  Get,
-  Param,
-  Res,
   Req,
   UploadedFile,
   UseInterceptors,
   UseGuards,
   BadRequestException,
-  NotFoundException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { Response } from "express";
-import { randomUUID } from "crypto";
-import { extname, join } from "path";
-import { existsSync } from "fs";
+import { memoryStorage } from "multer";
 import { PrismaService } from "../common/prisma.service";
 import { AuthGuard } from "../auth/auth.guard";
-import { resolveUploadsDir } from "./uploads-path";
+import { CloudStorageService } from "./cloud-storage.service";
 
-const UPLOADS_DIR = resolveUploadsDir();
-
-const storage = diskStorage({
-  destination: UPLOADS_DIR,
-  filename: (_req, file, cb) => {
-    const ext = extname(file.originalname).toLowerCase() || ".bin";
-    cb(null, `${randomUUID()}${ext}`);
-  },
-});
-
+const storage = memoryStorage();
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 @Controller("uploads")
 export class UploadsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudStorage: CloudStorageService
+  ) {}
 
   @Post()
   @UseInterceptors(
@@ -50,9 +36,16 @@ export class UploadsController {
       },
     })
   )
-  upload(@UploadedFile() file: Express.Multer.File) {
+  async upload(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException("No file uploaded");
-    return { url: `/api/uploads/${file.filename}` };
+
+    const resourceType = file.mimetype.startsWith("video/") ? "video" : "image";
+    const url = await this.cloudStorage.uploadBuffer(file.buffer, {
+      folder: "isaac-uploads",
+      resourceType,
+    });
+
+    return { url };
   }
 
   @Post("avatar")
@@ -71,9 +64,11 @@ export class UploadsController {
   )
   async uploadAvatar(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException("No file uploaded");
-    const relativeUrl = `/api/uploads/${file.filename}`;
-    const baseUrl = (process.env.API_URL || "").replace(/\/+$/, "");
-    const imageUrl = baseUrl ? `${baseUrl}${relativeUrl}` : relativeUrl;
+
+    const imageUrl = await this.cloudStorage.uploadBuffer(file.buffer, {
+      folder: "isaac-avatars",
+      resourceType: "image",
+    });
 
     const user = await this.prisma.user.update({
       where: { id: req.userId },
@@ -82,13 +77,5 @@ export class UploadsController {
     });
 
     return { url: imageUrl, user };
-  }
-
-  @Get(":filename")
-  serve(@Param("filename") filename: string, @Res() res: Response) {
-    if (/[/\\]/.test(filename)) throw new BadRequestException("Invalid filename");
-    const filePath = join(UPLOADS_DIR, filename);
-    if (!existsSync(filePath)) throw new NotFoundException("File not found");
-    res.sendFile(filePath);
   }
 }
